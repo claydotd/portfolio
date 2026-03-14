@@ -14,10 +14,10 @@ export const Layout = ({ children }: LayoutProps) => {
           <span className="brand-text">My Portfolio</span>
         </Link>
         <nav className="nav-links">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+          <NavLink to="/claydleslie.github.io/" end className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
             Home
           </NavLink>
-          <NavLink to="/about" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+          <NavLink to="/claydleslie.github.io/about" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
             About
           </NavLink>
           {/* Example: add more links as you create pages */}

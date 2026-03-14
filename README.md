@@ -76,4 +76,3 @@ Now you can visit `/projects` in the browser.
 - Adjust colors and spacing in `src/styles.css`.
 - Add more sections or components under `src/components`.
 
-# claydleslie.github.io

@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export const Home = () => {
   return (
     <section className="page">
@@ -24,10 +26,14 @@ export const Home = () => {
         <h2>Featured projects</h2>
         <p className="section-subtitle">Start by adding a few projects you&apos;re proud of.</p>
         <div className="card-grid">
-          <article className="card">
+          <Link to="/music-practice-pal" className="card card-link">
             <h3>Music Practice Pal</h3>
-            <p>A set of tools for learning and practicing music rudiments created with <span className="accent">tone.js</span>.</p>
-          </article>
+            <p>
+              A set of tools for learning and practicing music rudiments created with{" "}
+              <span className="accent">tone.js</span>.
+            </p>
+            <span className="pill">View project</span>
+          </Link>
           <article className="card">
             <h3>Recipe Library</h3>
             <p>A user interface for managing recipes and shopping lists created with React and TypeScript.</p>

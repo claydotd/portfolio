@@ -2,6 +2,13 @@ import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Home } from "./pages/Home";
 import { About } from "./pages/About";
+import { MusicPracticePal } from "./pages/MusicPracticePal";
+import { KeyToKeySignatures } from "./pages/applets/KeyToKeySignatures";
+import { IntervalInspector } from "./pages/applets/IntervalInspector";
+import { RhythmWorkshop } from "./pages/applets/RhythmWorkshop";
+import { ScaleBuilder } from "./pages/applets/ScaleBuilder";
+import { ChordLab } from "./pages/applets/ChordLab";
+import { PracticePlanner } from "./pages/applets/PracticePlanner";
 
 export const App = () => {
   return (
@@ -9,6 +16,13 @@ export const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
+        <Route path="/music-practice-pal" element={<MusicPracticePal />} />
+        <Route path="/music-practice-pal/key-to-key-signatures" element={<KeyToKeySignatures />} />
+        <Route path="/music-practice-pal/interval-inspector" element={<IntervalInspector />} />
+        <Route path="/music-practice-pal/rhythm-workshop" element={<RhythmWorkshop />} />
+        <Route path="/music-practice-pal/scale-builder" element={<ScaleBuilder />} />
+        <Route path="/music-practice-pal/chord-lab" element={<ChordLab />} />
+        <Route path="/music-practice-pal/practice-planner" element={<PracticePlanner />} />
       </Routes>
     </Layout>
   );

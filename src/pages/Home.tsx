@@ -4,11 +4,11 @@ export const Home = () => {
       <div className="hero">
         <p className="pill">Welcome to my portfolio</p>
         <h1>
-          Hi, I&apos;m <span className="accent">Your Name</span>.
+          Hi, I&apos;m <span className="accent">Clay</span>.
         </h1>
         <p className="subtitle">
-          I&apos;m learning <span className="accent">web development</span> and this portfolio is where I experiment
-          with React, TypeScript, and modern UI.
+          I&apos;m an <span className="accent">educational developer</span> and this portfolio is where I experiment
+          with React, TypeScript, and modern UI practices.
         </p>
         <div className="hero-actions">
           <a href="#projects" className="btn primary">
@@ -25,22 +25,22 @@ export const Home = () => {
         <p className="section-subtitle">Start by adding a few projects you&apos;re proud of.</p>
         <div className="card-grid">
           <article className="card">
-            <h3>Project One</h3>
-            <p>A short description of something you built or are working on.</p>
+            <h3>Music Practice Pal</h3>
+            <p>A set of tools for learning and practicing music rudiments created with <span className="accent">tone.js</span>.</p>
           </article>
           <article className="card">
-            <h3>Project Two</h3>
-            <p>Another project. This can be a tutorial you followed or an experiment.</p>
+            <h3>Recipe Library</h3>
+            <p>A user interface for managing recipes and shopping lists created with React and TypeScript.</p>
           </article>
         </div>
       </section>
 
       <section id="contact" className="section">
         <h2>Contact</h2>
-        <p className="section-subtitle">Add your email or links so people can reach you.</p>
+        <p className="section-subtitle">I'm always looking for new opportunities to learn and grow. Get in touch!</p>
         <div className="pill-row">
-          <span className="pill">you@example.com</span>
-          <span className="pill">@your_handle</span>
+          <span className="pill">claydleslie@icloud.com</span>
+          <span className="pill">@claydotd</span>
         </div>
       </section>
     </section>

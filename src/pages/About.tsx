@@ -22,6 +22,7 @@ export const About = () => {
             <li className="pill">JavaScript</li>
             <li className="pill">React</li>
             <li className="pill">TypeScript</li>
+            <li className="pill">SQL</li>
           </ul>
         </div>
       </div>

@@ -1,6 +1,11 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { ContactModal } from "../components/ContactModal";
 
 export const Home = () => {
+  const CONTACT_EMAIL = "claydleslie@icloud.com";
+  const [isContactOpen, setIsContactOpen] = useState(false);
+
   return (
     <section className="page">
       <div className="hero">
@@ -44,10 +49,35 @@ export const Home = () => {
       <section id="contact" className="section">
         <h2>Contact</h2>
         <p className="section-subtitle">I'm always looking for new opportunities to learn and grow. Get in touch!</p>
-        <div className="pill-row">
-          <span className="pill">claydleslie@icloud.com</span>
-          <span className="pill">@claydotd</span>
+        <div className="contact-actions">
+          <a href={`mailto:${CONTACT_EMAIL}`} className="btn primary">
+            Email
+          </a>
+          <a
+            href="https://www.linkedin.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="btn ghost"
+          >
+            LinkedIn
+          </a>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => {
+              setIsContactOpen(true);
+            }}
+          >
+            Contact form
+          </button>
         </div>
+        <ContactModal
+          isOpen={isContactOpen}
+          toEmail={CONTACT_EMAIL}
+          onClose={() => {
+            setIsContactOpen(false);
+          }}
+        />
       </section>
     </section>
   );

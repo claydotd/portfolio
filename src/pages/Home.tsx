@@ -54,7 +54,7 @@ export const Home = () => {
             Email
           </a>
           <a
-            href="https://www.linkedin.com/"
+            href="https://www.linkedin.com/in/claydotd"
             target="_blank"
             rel="noreferrer"
             className="btn ghost"

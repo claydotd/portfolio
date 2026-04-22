@@ -37,7 +37,7 @@ export const Home = () => {
               A new applet that maps forecast conditions to musical ideas so practice feels connected to the day&apos;s
               atmosphere.
             </p>
-            <span className="pill">Featured project</span>
+            <span className="pill">View project</span>
           </Link>
           <Link to="/music-practice-pal" className="card card-link">
             <h3>Music Practice Pal</h3>

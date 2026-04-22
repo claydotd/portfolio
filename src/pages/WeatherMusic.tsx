@@ -293,7 +293,7 @@ export const WeatherMusic = () => {
       const timeoutId = window.setTimeout(() => {
         controller.abort();
       }, FETCH_TIMEOUT_MS);
-      // fetch from openweather API. Example working api call: https://api.openweathermap.org/data/2.5/weather?lat=57.4698&lon=-7.3752&appid=20678318755a4c9416d000409b8e6607
+
       const response = await fetch(`${OPENWEATHER_DAILY_ENDPOINT}?${params.toString()}`, {
         signal: controller.signal,
       });

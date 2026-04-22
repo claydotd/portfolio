@@ -27,6 +27,12 @@ export const Layout = ({ children }: LayoutProps) => {
             >
               Music Practice Pal
             </NavLink>
+            <NavLink
+              to="/weather-music"
+              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+            >
+              Weather Music
+            </NavLink>
           </nav>
         </div>
       </header>

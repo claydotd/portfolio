@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Tone from "tone";
+import { weather_api_key } from './secrets';
 
 type LocationOption = {
   id: string;
@@ -115,7 +116,7 @@ const weatherIconForCondition = (condition: string): string => {
   return "🌤️";
 };
 
-const OPENWEATHER_API_KEY = "20678318755a4c9416d000409b8e6607";
+const OPENWEATHER_API_KEY = weather_api_key;
 const OPENWEATHER_DAILY_ENDPOINT = "https://api.openweathermap.org/data/2.5/forecast/daily";
 const FORECAST_STEP_COUNT = 16;
 const FETCH_TIMEOUT_MS = 12000;

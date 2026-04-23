@@ -31,6 +31,14 @@ export const Home = () => {
         <h2>Featured projects</h2>
         <p className="section-subtitle">Start by adding a few projects you&apos;re proud of.</p>
         <div className="card-grid">
+          <Link to="/weather-music" className="card card-link">
+            <h3>Weather Music</h3>
+            <p>
+              A new applet that maps forecast conditions to musical ideas so practice feels connected to the day&apos;s
+              atmosphere.
+            </p>
+            <span className="pill">View project</span>
+          </Link>
           <Link to="/music-practice-pal" className="card card-link">
             <h3>Music Practice Pal</h3>
             <p>

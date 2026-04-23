@@ -3,6 +3,7 @@ import { Layout } from "./components/Layout";
 import { Home } from "./pages/Home";
 import { About } from "./pages/About";
 import { MusicPracticePal } from "./pages/MusicPracticePal";
+import { WeatherMusic } from "./pages/WeatherMusic";
 import { KeyToKeySignatures } from "./pages/applets/KeyToKeySignatures";
 import { IntervalInspector } from "./pages/applets/IntervalInspector";
 import { RhythmWorkshop } from "./pages/applets/RhythmWorkshop";
@@ -16,6 +17,7 @@ export const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
+        <Route path="/weather-music" element={<WeatherMusic />} />
         <Route path="/music-practice-pal" element={<MusicPracticePal />} />
         <Route path="/music-practice-pal/key-to-key-signatures" element={<KeyToKeySignatures />} />
         <Route path="/music-practice-pal/interval-inspector" element={<IntervalInspector />} />

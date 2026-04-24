@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Tone from "tone";
 import { weather_api_key } from './secrets';
+import img1 from "./1.png";
+import img2 from "./2.png";
+import img3 from "./3.png";
+import img4 from "./4.png";
+
+const images = [img1, img2, img3, img4];
 
 type LocationOption = {
   id: string;
@@ -20,6 +26,8 @@ type ForecastDay = {
 };
 
 type ModeName = "ionian" | "aeolian" | "dorian" | "mixolydian";
+
+type DrumTrack = "kick" | "snare" | "hihat" | "clap";
 
 const DEFAULT_LOCATION: LocationOption = {
   id: "edinburgh-gb",
@@ -65,14 +73,15 @@ const LOCATION_OPTIONS: LocationOption[] = [
 const formatLocationLabel = (location: LocationOption) =>
   location.countryName ? `${location.name}, ${location.countryName}` : location.name;
 
+// Scale degrees for different weather conditions
 const mapWeatherToScaleDegree = (condition: string): number => {
   const normalized = condition.toLowerCase();
-  if (normalized.includes("thunder")) return 0;
-  if (normalized.includes("rain") || normalized.includes("drizzle")) return 1;
+  if (normalized.includes("thunder")) return 7;
+  if (normalized.includes("rain") || normalized.includes("drizzle")) return 5;
   if (normalized.includes("snow")) return 2;
   if (normalized.includes("cloud")) return 4;
-  if (normalized.includes("mist") || normalized.includes("fog")) return 5;
-  if (normalized.includes("clear")) return 6;
+  if (normalized.includes("mist") || normalized.includes("fog")) return 1;
+  if (normalized.includes("clear")) return 0;
   return 3;
 };
 
@@ -81,15 +90,27 @@ const toDateLabel = (unixSeconds: number): string => {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 
-const buildFallbackForecast = (): ForecastDay[] =>
-  Array.from({ length: 16 }, (_, index) => ({
-    dateLabel: `Day ${index + 1}`,
-    weatherMain: "Unknown",
-    weatherDescription: "forecast unavailable",
-    tempMin: 0,
-    tempMax: 0,
-    weatherIcon: "❔",
-  }));
+// Early spring in Scotland: cold, lots of cloud and rain, occasional clear spells
+const SCOTLAND_SPRING_FORECAST: ForecastDay[] = [
+  { dateLabel: "Day 1",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",   tempMin: 3,  tempMax: 8,  weatherIcon: "☁️" },
+  { dateLabel: "Day 2",  weatherMain: "Rain",    weatherDescription: "light rain",         tempMin: 4,  tempMax: 9,  weatherIcon: "🌧️" },
+  { dateLabel: "Day 3",  weatherMain: "Rain",    weatherDescription: "moderate rain",      tempMin: 3,  tempMax: 7,  weatherIcon: "🌧️" },
+  { dateLabel: "Day 4",  weatherMain: "Clouds",  weatherDescription: "broken clouds",      tempMin: 2,  tempMax: 7,  weatherIcon: "☁️" },
+  { dateLabel: "Day 5",  weatherMain: "Clear",   weatherDescription: "clear sky",          tempMin: 1,  tempMax: 9,  weatherIcon: "☀️" },
+  { dateLabel: "Day 6",  weatherMain: "Mist",    weatherDescription: "mist",               tempMin: 3,  tempMax: 6,  weatherIcon: "🌫️" },
+  { dateLabel: "Day 7",  weatherMain: "Drizzle", weatherDescription: "light drizzle",      tempMin: 4,  tempMax: 8,  weatherIcon: "🌧️" },
+  { dateLabel: "Day 8",  weatherMain: "Clouds",  weatherDescription: "scattered clouds",   tempMin: 3,  tempMax: 9,  weatherIcon: "☁️" },
+  { dateLabel: "Day 9",  weatherMain: "Rain",    weatherDescription: "light rain",         tempMin: 4,  tempMax: 8,  weatherIcon: "🌧️" },
+  { dateLabel: "Day 10", weatherMain: "Clear",   weatherDescription: "clear sky",          tempMin: 2,  tempMax: 10, weatherIcon: "☀️" },
+  { dateLabel: "Day 11", weatherMain: "Clouds",  weatherDescription: "overcast clouds",    tempMin: 4,  tempMax: 8,  weatherIcon: "☁️" },
+  { dateLabel: "Day 12", weatherMain: "Snow",    weatherDescription: "light snow",         tempMin: -1, tempMax: 3,  weatherIcon: "❄️" },
+  { dateLabel: "Day 13", weatherMain: "Clouds",  weatherDescription: "broken clouds",      tempMin: 2,  tempMax: 6,  weatherIcon: "☁️" },
+  { dateLabel: "Day 14", weatherMain: "Rain",    weatherDescription: "moderate rain",      tempMin: 5,  tempMax: 9,  weatherIcon: "🌧️" },
+  { dateLabel: "Day 15", weatherMain: "Clear",   weatherDescription: "clear sky",          tempMin: 3,  tempMax: 11, weatherIcon: "☀️" },
+  { dateLabel: "Day 16", weatherMain: "Mist",    weatherDescription: "mist",               tempMin: 4,  tempMax: 7,  weatherIcon: "🌫️" },
+];
+
+const buildFallbackForecast = (): ForecastDay[] => SCOTLAND_SPRING_FORECAST;
 
 const MODE_INTERVALS: Record<ModeName, number[]> = {
   ionian: [0, 2, 4, 5, 7, 9, 11],
@@ -114,6 +135,21 @@ const weatherIconForCondition = (condition: string): string => {
   if (normalized.includes("cloud")) return "☁️";
   if (normalized.includes("clear")) return "☀️";
   return "🌤️";
+};
+
+const DRUM_TRACKS: { id: DrumTrack; label: string; emoji: string }[] = [
+  { id: "kick",  label: "Kick",   emoji: "🟣" },
+  { id: "snare", label: "Snare",  emoji: "🔵" },
+  { id: "hihat", label: "Hi-Hat", emoji: "🟡" },
+  { id: "clap",  label: "Clap",   emoji: "🟠" },
+];
+
+// Vaporwave default pattern: four-on-the-floor kick, snare on 2&4, running hihat, occasional clap
+const DEFAULT_DRUM_PATTERN: Record<DrumTrack, boolean[]> = {
+  kick:  [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0].map(Boolean),
+  snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0].map(Boolean),
+  hihat: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0].map(Boolean),
+  clap:  [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0].map(Boolean),
 };
 
 const OPENWEATHER_API_KEY = weather_api_key;
@@ -159,6 +195,36 @@ const parseForecastDays = (data: OpenWeatherDailyResponse): ForecastDay[] => {
   ].slice(0, FORECAST_STEP_COUNT);
 };
 
+// ── Weather → synth parameter helpers ───────────────────────────────────────
+
+/** Maps tempMax (°C) → filter cutoff Hz.
+ *  -10°C → ~100 Hz (very dark), 40°C → ~4000 Hz (wide open) */
+const tempToFilterCutoff = (tempMax: number): number => {
+  const clamped = Math.max(-10, Math.min(40, tempMax));
+  const t = (clamped + 10) / 50; // 0–1
+  return Math.round(100 + t * t * 3900); // exponential feel
+};
+
+/** Maps tempMin (°C) → release time in seconds.
+ *  Very cold (-10°C) → 1.2 s long decay, mild (15°C) → 0.2 s tight */
+const tempToRelease = (tempMin: number): number => {
+  const clamped = Math.max(-10, Math.min(15, tempMin));
+  const t = 1 - (clamped + 10) / 25; // 1 when cold, 0 when mild
+  return parseFloat((0.2 + t * 1.0).toFixed(2));
+};
+
+/** Maps weather description keywords → distortion amount (0–0.6).
+ *  "heavy", "thunder", "storm" → more grit; "light", "clear" → clean */
+const descriptionToDistortion = (description: string): number => {
+  const d = description.toLowerCase();
+  if (d.includes("thunder") || d.includes("storm"))  return 0.55;
+  if (d.includes("heavy"))                            return 0.40;
+  if (d.includes("moderate") || d.includes("drizzle")) return 0.25;
+  if (d.includes("light") || d.includes("overcast"))  return 0.10;
+  if (d.includes("clear") || d.includes("few"))      return 0.0;
+  return 0.15; // default
+};
+
 export const WeatherMusic = () => {
   const [selectedLocation, setSelectedLocation] = useState<LocationOption>(DEFAULT_LOCATION);
   const [locationSearch, setLocationSearch] = useState(formatLocationLabel(DEFAULT_LOCATION));
@@ -174,10 +240,22 @@ export const WeatherMusic = () => {
   const [highlightedLocationIndex, setHighlightedLocationIndex] = useState(-1);
   const [reloadCount, setReloadCount] = useState(0);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
+  
+  const [animFrame, setAnimFrame] = useState(0);
 
-  const synthRef = useRef<Tone.Synth | null>(null);
+  const [drumPattern, setDrumPattern] = useState<Record<DrumTrack, boolean[]>>(DEFAULT_DRUM_PATTERN);
+  const [drumsEnabled, setDrumsEnabled] = useState(false);
+  const [drumGridOpen, setDrumGridOpen] = useState(false);
+
+  const synthRef = useRef<Tone.MonoSynth | null>(null);
+  const filterRef = useRef<Tone.Filter | null>(null);
+  const distortionRef = useRef<Tone.Distortion | null>(null);
   const sequenceRef = useRef<Tone.Sequence<number> | null>(null);
   const locationComboboxRef = useRef<HTMLDivElement | null>(null);
+
+  // Drum refs — typed loosely so we can store heterogeneous Tone synths
+  const drumSynthsRef = useRef<Record<string, Tone.MembraneSynth | Tone.NoiseSynth | Tone.MetalSynth> | null>(null);
+  const drumSequenceRef = useRef<Tone.Sequence<number> | null>(null);
 
   const filteredLocations = useMemo(() => {
     if (showAllLocations) return LOCATION_OPTIONS;
@@ -210,28 +288,50 @@ export const WeatherMusic = () => {
           const mode = MODE_INTERVALS[selectedMode];
           const degree = mapWeatherToScaleDegree(day.weatherMain);
           const interval = mode[degree] ?? mode[0];
-          const octave = index < 8 ? 3 : 4;
+          const octave = 2;
           return Tone.Frequency(48 + interval + (octave - 3) * 12, "midi").toNote();
         })
         .slice(0, 16),
     [forecast, selectedMode]
   );
 
+  // ── Bass synth + effects setup (runs once) ───────────────────────────────────
   useEffect(() => {
-    synthRef.current = new Tone.Synth({
-      oscillator: { type: "triangle" },
-      envelope: { attack: 0.02, decay: 0.12, sustain: 0.18, release: 0.24 },
-      volume: -6,
-    }).toDestination();
+    // Bass-style MonoSynth with sine oscillator and resonant low-pass filter
+    synthRef.current = new Tone.MonoSynth({
+      oscillator: { type: "sine" },
+      filter: { type: "lowpass", rolloff: -24, Q: 3 },
+      envelope: { attack: 0.01, decay: 0.2, sustain: 0.6, release: 0.4 },
+      filterEnvelope: {
+        attack: 0.01,
+        decay: 0.15,
+        sustain: 0.3,
+        release: 0.4,
+        baseFrequency: 80,
+        octaves: 3,
+      },
+      volume: -4,
+    });
+
+    // Per-step filter cutoff (driven by tempMax)
+    filterRef.current = new Tone.Filter(800, "lowpass").toDestination();
+
+    // Per-step distortion (driven by weatherDescription intensity)
+    distortionRef.current = new Tone.Distortion(0).toDestination();
+
+    // Chain: synth → filter → distortion → destination
+    synthRef.current.connect(filterRef.current);
+    filterRef.current.connect(distortionRef.current);
 
     Tone.Transport.bpm.value = bpm;
 
     sequenceRef.current = new Tone.Sequence(
       (time, stepIndex) => {
         setActiveStep(stepIndex);
+        setAnimFrame(Math.floor(stepIndex / 4));
         if (stepsOn[stepIndex]) {
-          const pitch = weatherDrivenPitches[stepIndex] ?? "C4";
-          synthRef.current?.triggerAttackRelease(pitch, "16n", time);
+          const pitch = weatherDrivenPitches[stepIndex] ?? "C2";
+          synthRef.current?.triggerAttackRelease(pitch, "8n", time);
         }
       },
       Array.from({ length: 16 }, (_, index) => index),
@@ -244,13 +344,67 @@ export const WeatherMusic = () => {
       sequenceRef.current = null;
       synthRef.current?.dispose();
       synthRef.current = null;
+      filterRef.current?.dispose();
+      filterRef.current = null;
+      distortionRef.current?.dispose();
+      distortionRef.current = null;
       void Tone.Transport.stop();
       Tone.Transport.cancel(0);
     };
-    // This setup runs once; sequence callback state is refreshed by a separate effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Drum synth setup (runs once) ────────────────────────────────────────────
+  useEffect(() => {
+    const kickSynth = new Tone.MembraneSynth({
+      pitchDecay: 0.08,
+      octaves: 6,
+      envelope: { attack: 0.001, decay: 0.35, sustain: 0, release: 0.1 },
+      volume: -4,
+    }).toDestination();
+
+    const snareSynth = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.05 },
+      volume: -10,
+    }).toDestination();
+
+    const hihatSynth = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.06, release: 0.01 },
+      harmonicity: 5.1,
+      modulationIndex: 32,
+      resonance: 4000,
+      octaves: 1.5,
+      volume: -18,
+    }).toDestination();
+    hihatSynth.frequency.value = 400;
+
+    const clapSynth = new Tone.NoiseSynth({
+      noise: { type: "pink" },
+      envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.05 },
+      volume: -14,
+    }).toDestination();
+
+    // Add a touch of reverb to the clap for that vaporwave shimmer
+    const clapReverb = new Tone.Reverb({ decay: 1.2, wet: 0.45 }).toDestination();
+    clapSynth.connect(clapReverb);
+
+    drumSynthsRef.current = { kick: kickSynth, snare: snareSynth, hihat: hihatSynth, clap: clapSynth };
+
+    return () => {
+      drumSequenceRef.current?.stop();
+      drumSequenceRef.current?.dispose();
+      drumSequenceRef.current = null;
+      kickSynth.dispose();
+      snareSynth.dispose();
+      hihatSynth.dispose();
+      clapSynth.dispose();
+      clapReverb.dispose();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Melody sequence rebuild ──────────────────────────────────────────────────
   useEffect(() => {
     if (!sequenceRef.current) return;
     sequenceRef.current.dispose();
@@ -258,10 +412,26 @@ export const WeatherMusic = () => {
     sequenceRef.current = new Tone.Sequence(
       (time, stepIndex) => {
         setActiveStep(stepIndex);
-        if (stepsOn[stepIndex]) {
-          const pitch = weatherDrivenPitches[stepIndex] ?? "C4";
-          synthRef.current?.triggerAttackRelease(pitch, "16n", time);
+        setAnimFrame(Math.floor(stepIndex / 4));
+        if (!stepsOn[stepIndex]) return;
+
+        const day = forecast[stepIndex];
+        const pitch = weatherDrivenPitches[stepIndex] ?? "C2";
+        const synth = synthRef.current;
+
+        // Apply per-step parameter changes driven by forecast data
+        if (synth && day) {
+          const cutoff  = tempToFilterCutoff(day.tempMax);
+          const release = tempToRelease(day.tempMin);
+          const dist    = descriptionToDistortion(day.weatherDescription);
+
+          // Schedule param changes at the exact step time
+          synth.set({ envelope: { release } });
+          filterRef.current?.frequency.setValueAtTime(cutoff, time);
+          distortionRef.current?.set({ distortion: dist });
         }
+
+        synth?.triggerAttackRelease(pitch, "8n", time);
       },
       Array.from({ length: 16 }, (_, index) => index),
       "16n"
@@ -270,12 +440,41 @@ export const WeatherMusic = () => {
     if (isPlaying) {
       sequenceRef.current.start(0);
     }
-  }, [isPlaying, stepsOn, weatherDrivenPitches]);
+  }, [isPlaying, stepsOn, weatherDrivenPitches, forecast]);
 
+  // ── Drum sequence rebuild ────────────────────────────────────────────────────
+  useEffect(() => {
+    const synths = drumSynthsRef.current;
+    if (!synths) return;
+
+    drumSequenceRef.current?.dispose();
+
+    drumSequenceRef.current = new Tone.Sequence(
+      (time, stepIndex) => {
+        if (!drumsEnabled) return;
+        (Object.keys(drumPattern) as DrumTrack[]).forEach((track) => {
+          if (!drumPattern[track][stepIndex]) return;
+          const synth = synths[track];
+          if (track === "kick")  (synth as Tone.MembraneSynth).triggerAttackRelease("C1", "16n", time);
+          else if (track === "snare" || track === "clap") (synth as Tone.NoiseSynth).triggerAttackRelease("16n", time);
+          else if (track === "hihat") (synth as Tone.MetalSynth).triggerAttackRelease("16n", time);
+        });
+      },
+      Array.from({ length: 16 }, (_, i) => i),
+      "16n"
+    );
+
+    if (isPlaying) {
+      drumSequenceRef.current.start(0);
+    }
+  }, [isPlaying, drumsEnabled, drumPattern]);
+
+  // ── BPM sync ────────────────────────────────────────────────────────────────
   useEffect(() => {
     Tone.Transport.bpm.rampTo(bpm, 0.08);
   }, [bpm]);
 
+  // ── Weather fetch ────────────────────────────────────────────────────────────
   const fetchForecast = useCallback(async () => {
     setIsFetchingWeather(true);
     setStatusMessage(`Loading forecast for ${formatLocationLabel(selectedLocation)}...`);
@@ -314,9 +513,9 @@ export const WeatherMusic = () => {
       console.error(error);
       setForecast(buildFallbackForecast());
       if (error instanceof Error && error.name === "AbortError") {
-        setStatusMessage("Weather request timed out. Showing placeholder weather steps.");
+        setStatusMessage("Weather request timed out. Showing example Scottish spring forecast.");
       } else {
-        setStatusMessage("Could not load live forecast. Showing placeholder weather steps.");
+        setStatusMessage("Could not load live forecast. Showing example forecast.");
       }
     } finally {
       setIsFetchingWeather(false);
@@ -327,6 +526,7 @@ export const WeatherMusic = () => {
     void fetchForecast();
   }, [fetchForecast, reloadCount]);
 
+  // ── Geolocation ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!navigator.geolocation) return;
 
@@ -350,6 +550,7 @@ export const WeatherMusic = () => {
     );
   }, []);
 
+  // ── Close location menu on outside click ─────────────────────────────────────
   useEffect(() => {
     const onDocumentPointerDown = (event: MouseEvent) => {
       if (!locationComboboxRef.current?.contains(event.target as Node)) {
@@ -363,18 +564,21 @@ export const WeatherMusic = () => {
     };
   }, []);
 
+  // ── Playback toggle ──────────────────────────────────────────────────────────
   const onTogglePlay = async () => {
     if (!sequenceRef.current) return;
 
     if (!isPlaying) {
       await Tone.start();
       sequenceRef.current.start(0);
+      drumSequenceRef.current?.start(0);
       await Tone.Transport.start();
       setIsPlaying(true);
       return;
     }
 
     sequenceRef.current.stop();
+    drumSequenceRef.current?.stop();
     await Tone.Transport.stop();
     setIsPlaying(false);
     setActiveStep(null);
@@ -394,12 +598,21 @@ export const WeatherMusic = () => {
         <p className="pill">Project · Weather-driven sequencer</p>
         <h1>Weather Music</h1>
         <p className="subtitle">
-          A 16-step sequencer where each step is powered by one day of weather data. Use your location or choose a new
-          city, then play the forecast.
+          A 16-step sequencer where the sound and note for each step is set by one day of weather data. Use your location or choose a location, then see what the forecast sounds like!
+        </p>
+        <p className="subtitle">
+          At the moment, it's just drums and a monophonic bass synth, but I might add a polyphonic chord synth later...
         </p>
       </header>
 
       <section className="section weather-music-panel">
+        <div className="sequencer-animation">
+          <img
+            src={images[animFrame % 4]}
+            alt="sequencer animation"
+            className="sequencer-animation-image"
+          />
+        </div>
         <div className="weather-music-toolbar">
           <label className="form-field weather-location-picker">
             <span>Location</span>
@@ -529,6 +742,28 @@ export const WeatherMusic = () => {
             </select>
           </label>
 
+          {/* Joined drum control pill */}
+          <div className="drum-pill">
+            <button
+              type="button"
+              className={`btn drum-pill-drum ${drumsEnabled ? "primary" : "ghost"}`}
+              title={drumsEnabled ? "Mute drums" : "Unmute drums"}
+              onClick={() => setDrumsEnabled((v) => !v)}
+              aria-pressed={drumsEnabled}
+            >
+              🥁
+            </button>
+            <button
+              type="button"
+              className={`btn drum-pill-grid ${drumGridOpen ? "primary" : "ghost"}`}
+              title="Edit drum pattern"
+              onClick={() => setDrumGridOpen((v) => !v)}
+              aria-pressed={drumGridOpen}
+            >
+              ⊞
+            </button>
+          </div>
+
           <button type="button" className={`btn ${isPlaying ? "ghost" : "primary"}`} onClick={() => void onTogglePlay()}>
             {isPlaying ? "Stop sequencer" : "Start sequencer"}
           </button>
@@ -568,12 +803,96 @@ export const WeatherMusic = () => {
                   {Math.round(day.tempMax)} / {Math.round(day.tempMin)} C
                 </span>
                 <span className="weather-step-detail">{day.weatherDescription}</span>
-                <span className="weather-step-pitch">{weatherDrivenPitches[index] ?? "C4"}</span>
+                <span className="weather-step-pitch">{weatherDrivenPitches[index] ?? "C2"}</span>
               </button>
             );
           })}
         </div>
       </section>
+
+      {/* ── Drum grid overlay ───────────────────────────────────────────────── */}
+      {drumGridOpen && (
+        <div className="drum-overlay" role="dialog" aria-label="Drum sequencer">
+          <div className="drum-overlay-inner">
+            <div className="drum-overlay-header">
+              <h2 className="drum-overlay-title">
+                🥁 Drum Machine
+                <span className="drum-overlay-subtitle">vaporwave edition</span>
+              </h2>
+              <div className="drum-overlay-controls">
+                <button
+                  type="button"
+                  className={`btn ${drumsEnabled ? "primary" : "ghost"}`}
+                  onClick={() => setDrumsEnabled((v) => !v)}
+                >
+                  {drumsEnabled ? "Mute" : "Unmute"}
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setDrumPattern(DEFAULT_DRUM_PATTERN)}
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setDrumGridOpen(false)}
+                  aria-label="Close drum sequencer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="drum-grid">
+              {/* Step number header */}
+              <div className="drum-row drum-row-header">
+                <span className="drum-track-label" />
+                {Array.from({ length: 16 }, (_, i) => (
+                  <span
+                    key={i}
+                    className={`drum-step-num ${activeStep === i ? "drum-step-num-active" : ""}`}
+                  >
+                    {i + 1}
+                  </span>
+                ))}
+              </div>
+
+              {DRUM_TRACKS.map(({ id, label, emoji }) => (
+                <div key={id} className="drum-row">
+                  <span className="drum-track-label">
+                    <span className="drum-track-emoji">{emoji}</span>
+                    {label}
+                  </span>
+                  {drumPattern[id].map((on, stepIndex) => (
+                    <button
+                      key={stepIndex}
+                      type="button"
+                      className={`drum-step
+                        ${on ? "drum-step-on" : "drum-step-off"}
+                        ${activeStep === stepIndex ? "drum-step-active" : ""}
+                        drum-step-${id}`}
+                      onClick={() =>
+                        setDrumPattern((prev) => ({
+                          ...prev,
+                          [id]: prev[id].map((v, i) => (i === stepIndex ? !v : v)),
+                        }))
+                      }
+                      aria-pressed={on}
+                      aria-label={`${label} step ${stepIndex + 1}`}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            <p className="drum-overlay-hint">
+              Steps sync with the weather sequencer tempo · {bpm} BPM
+            </p>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

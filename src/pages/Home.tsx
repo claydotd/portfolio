@@ -29,7 +29,7 @@ export const Home = () => {
 
       <section id="projects" className="section">
         <h2>Featured projects</h2>
-        <p className="section-subtitle">Start by adding a few projects you&apos;re proud of.</p>
+        <p className="section-subtitle">Here are a few projects that I'm proud of!</p>
         <div className="card-grid">
           <Link to="/weather-music" className="card card-link">
             <h3>Weather Music</h3>

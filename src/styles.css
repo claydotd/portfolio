@@ -1119,3 +1119,174 @@ h2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* ── Drum pill button ─────────────────────────────────────── */
+.drum-pill {
+  display: flex;
+  align-items: stretch;
+  border-radius: var(--radius, 6px);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.drum-pill .btn {
+  border-radius: 0;
+  border: none;
+  font-size: 1.1rem;
+  padding: 0.4em 0.7em;
+}
+
+.drum-pill-drum {
+  border-right: 1px solid color-mix(in srgb, currentColor 15%, transparent) !important;
+}
+
+/* ── Drum overlay ─────────────────────────────────────────── */
+.drum-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, black 55%, transparent);
+  backdrop-filter: blur(6px);
+  animation: drum-overlay-in 0.18s ease;
+}
+
+@keyframes drum-overlay-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.drum-overlay-inner {
+  background: var(--surface, #1a1a2e);
+  border: 1px solid color-mix(in srgb, var(--accent, #a78bfa) 30%, transparent);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  width: min(96vw, 860px);
+  box-shadow: 0 32px 80px color-mix(in srgb, black 60%, transparent),
+              0 0 0 1px color-mix(in srgb, var(--accent, #a78bfa) 10%, transparent) inset;
+}
+
+.drum-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.drum-overlay-title {
+  margin: 0;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.drum-overlay-subtitle {
+  font-size: 0.75rem;
+  opacity: 0.5;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.drum-overlay-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ── Drum grid ────────────────────────────────────────────── */
+.drum-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.drum-row {
+  display: grid;
+  grid-template-columns: 6rem repeat(16, 1fr);
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.drum-row-header {
+  margin-bottom: 0.1rem;
+}
+
+.drum-step-num {
+  text-align: center;
+  font-size: 0.6rem;
+  opacity: 0.35;
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.08s;
+}
+
+.drum-step-num-active {
+  opacity: 1;
+  color: var(--accent, #a78bfa);
+}
+
+.drum-track-label {
+  font-size: 0.72rem;
+  opacity: 0.75;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-right: 0.5rem;
+  white-space: nowrap;
+}
+
+.drum-track-emoji {
+  font-size: 0.85rem;
+}
+
+.drum-step {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.07s, opacity 0.07s, box-shadow 0.07s;
+}
+
+.drum-step:hover {
+  transform: scale(1.12);
+}
+
+.drum-step-off {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  opacity: 0.5;
+}
+
+/* Per-track colours */
+.drum-step-kick.drum-step-on   { background: #c084fc; box-shadow: 0 0 8px #c084fc66; }
+.drum-step-snare.drum-step-on  { background: #60a5fa; box-shadow: 0 0 8px #60a5fa66; }
+.drum-step-hihat.drum-step-on  { background: #fbbf24; box-shadow: 0 0 8px #fbbf2466; }
+.drum-step-clap.drum-step-on   { background: #fb923c; box-shadow: 0 0 8px #fb923c66; }
+
+.drum-step-active {
+  outline: 2px solid white;
+  outline-offset: 1px;
+}
+
+.drum-overlay-hint {
+  margin: 1.25rem 0 0;
+  font-size: 0.7rem;
+  opacity: 0.35;
+  text-align: right;
+  letter-spacing: 0.05em;
+}
+.sequencer-animation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.sequencer-animation-image {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+}

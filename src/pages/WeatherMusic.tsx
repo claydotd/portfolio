@@ -5,6 +5,7 @@ import img1 from "./1.png";
 import img2 from "./2.png";
 import img3 from "./3.png";
 import img4 from "./4.png";
+import { getFallbackForecast } from "./Forecasts";
 
 const images = [img1, img2, img3, img4];
 
@@ -109,8 +110,6 @@ const SCOTLAND_SPRING_FORECAST: ForecastDay[] = [
   { dateLabel: "Day 15", weatherMain: "Clear",   weatherDescription: "clear sky",          tempMin: 3,  tempMax: 11, weatherIcon: "☀️" },
   { dateLabel: "Day 16", weatherMain: "Mist",    weatherDescription: "mist",               tempMin: 4,  tempMax: 7,  weatherIcon: "🌫️" },
 ];
-
-const buildFallbackForecast = (): ForecastDay[] => SCOTLAND_SPRING_FORECAST;
 
 const MODE_INTERVALS: Record<ModeName, number[]> = {
   ionian: [0, 2, 4, 5, 7, 9, 11],
@@ -228,7 +227,9 @@ const descriptionToDistortion = (description: string): number => {
 export const WeatherMusic = () => {
   const [selectedLocation, setSelectedLocation] = useState<LocationOption>(DEFAULT_LOCATION);
   const [locationSearch, setLocationSearch] = useState(formatLocationLabel(DEFAULT_LOCATION));
-  const [forecast, setForecast] = useState<ForecastDay[]>(buildFallbackForecast());
+  const [forecast, setForecast] = useState<ForecastDay[]>(
+    getFallbackForecast(DEFAULT_LOCATION.id)
+  );
   const [stepsOn, setStepsOn] = useState<boolean[]>(Array.from({ length: 16 }, (_, i) => i % 4 === 0));
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -511,11 +512,11 @@ export const WeatherMusic = () => {
       setStatusMessage(`Loaded 16-day forecast for ${formatLocationLabel(selectedLocation)}.`);
     } catch (error) {
       console.error(error);
-      setForecast(buildFallbackForecast());
+      setForecast(getFallbackForecast(selectedLocation.id));
       if (error instanceof Error && error.name === "AbortError") {
         setStatusMessage("Weather request timed out. Showing example Scottish spring forecast.");
       } else {
-        setStatusMessage("Could not load live forecast. Showing example forecast.");
+        setStatusMessage(`Could not load live forecast. Showing example forecast for ${formatLocationLabel(selectedLocation)}.`);
       }
     } finally {
       setIsFetchingWeather(false);

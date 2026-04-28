@@ -15,20 +15,20 @@ export const Layout = ({ children }: LayoutProps) => {
             <span className="brand-text">Clay Dowdell Leslie</span>
           </Link>
           <nav className="nav-links">
-            <NavLink to="/" end className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+            <NavLink to="/portfolio" end className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
               Home
             </NavLink>
-            <NavLink to="/about" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
+            <NavLink to="/portfolio/about" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
               About me
             </NavLink>
             <NavLink
-              to="/music-practice-pal"
+              to="/portfolio/music-practice-pal"
               className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
             >
               Music Practice Pal
             </NavLink>
             <NavLink
-              to="/weather-music"
+              to="/portfolio/weather-music"
               className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
             >
               Weather Music

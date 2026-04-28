@@ -58,6 +58,7 @@ const LOCATION_OPTIONS: LocationOption[] = [
   { id: "new-york-us", name: "New York", countryName: "United States", lat: 40.7128, lon: -74.006 },
   { id: "nashville-us", name: "Nashville", countryName: "United States", lat: 36.1627, lon: -86.7816 },
   { id: "toronto-ca", name: "Toronto", countryName: "Canada", lat: 43.6532, lon: -79.3832 },
+  { id: "vancouver-ca", name: "Vancouver", countryName: "Canada", lat: 49.2462, lon: -123.1162 },
   { id: "sao-paulo-br", name: "Sao Paulo", countryName: "Brazil", lat: -23.5558, lon: -46.6396 },
   { id: "buenos-aires-ar", name: "Buenos Aires", countryName: "Argentina", lat: -34.6037, lon: -58.3816 },
   { id: "lagos-ng", name: "Lagos", countryName: "Nigeria", lat: 6.5244, lon: 3.3792 },

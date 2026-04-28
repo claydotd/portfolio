@@ -10,7 +10,7 @@ export const Layout = ({ children }: LayoutProps) => {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-inner">
-          <Link to="/" className="brand">
+          <Link to="/portfolio" className="brand">
             <span className="brand-mark" />
             <span className="brand-text">Clay Dowdell Leslie</span>
           </Link>

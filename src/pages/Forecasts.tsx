@@ -394,6 +394,25 @@ export type ForecastDay = {
     { dateLabel: "May 12", weatherMain: "Clear",   weatherDescription: "clear sky",          tempMin: 8,  tempMax: 18 },
   ]);
   
+  const VANCOUVER: ForecastDay[] = withIcons([
+    { dateLabel: "Apr 27", weatherMain: "Clouds",  weatherDescription: "few clouds",    tempMin: 8,  tempMax: 15 },
+    { dateLabel: "Apr 28", weatherMain: "Clear",    weatherDescription: "clear sky",         tempMin: 6,  tempMax: 15 },
+    { dateLabel: "Apr 29", weatherMain: "Clouds",  weatherDescription: "overcast clouds",      tempMin: 6,  tempMax: 16 },
+    { dateLabel: "Apr 30", weatherMain: "Clear",   weatherDescription: "overcast clouds",          tempMin: 5,  tempMax: 15 },
+    { dateLabel: "May 1",  weatherMain: "Clear",   weatherDescription: "overcast clouds",          tempMin: 6,  tempMax: 12 },
+    { dateLabel: "May 2",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",         tempMin: 7,  tempMax: 14 },
+    { dateLabel: "May 3",  weatherMain: "Clear",    weatherDescription: "clear sky",      tempMin: 8,  tempMax: 19 },
+    { dateLabel: "May 4",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",    tempMin: 7,  tempMax: 19 },
+    { dateLabel: "May 5",  weatherMain: "Clear",   weatherDescription: "clear sky",          tempMin: 6,  tempMax: 16 },
+    { dateLabel: "May 6",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",          tempMin: 7,  tempMax: 15 },
+    { dateLabel: "May 7",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",   tempMin: 8,  tempMax: 11 },
+    { dateLabel: "May 8",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",        tempMin: 8,  tempMax: 14 },
+    { dateLabel: "May 9",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",  tempMin: 9,  tempMax: 15 },
+    { dateLabel: "May 10", weatherMain: "Clouds",  weatherDescription: "overcast clouds",      tempMin: 8,  tempMax: 14 },
+    { dateLabel: "May 11", weatherMain: "Clouds",  weatherDescription: "overcast clouds",          tempMin: 7,  tempMax: 12 },
+    { dateLabel: "May 12", weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 8,  tempMax: 12 },
+  ]);
+
   const SAO_PAULO: ForecastDay[] = withIcons([
     { dateLabel: "Apr 27", weatherMain: "Rain",    weatherDescription: "moderate rain",      tempMin: 16, tempMax: 23 },
     { dateLabel: "Apr 28", weatherMain: "Clouds",  weatherDescription: "overcast clouds",    tempMin: 16, tempMax: 22 },
@@ -632,6 +651,7 @@ export type ForecastDay = {
     "new-york-us":     NEW_YORK,
     "nashville-us":    NASHVILLE,
     "toronto-ca":      TORONTO,
+    "vancouver-ca":    VANCOUVER,
     "sao-paulo-br":    SAO_PAULO,
     "buenos-aires-ar": BUENOS_AIRES,
     "lagos-ng":        LAGOS,

@@ -110,7 +110,7 @@ a {
   width: 20px;
   height: 20px;
   border-radius: 999px;
-  background: conic-gradient(from 140deg, var(--mustard), var(--pink), #f9a8d4, var(--mustard));
+  background: conic-gradient(from 140deg, var(--yellow), var(--pink), #f9a8d4, var(--cream));
   box-shadow: 0 0 18px rgba(212,160,23,.55);
 }
 

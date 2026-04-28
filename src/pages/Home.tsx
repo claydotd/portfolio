@@ -31,15 +31,14 @@ export const Home = () => {
         <h2>Featured projects</h2>
         <p className="section-subtitle">Here are a few projects that I'm proud of!</p>
         <div className="card-grid">
-          <Link to="/weather-music" className="card card-link">
+          <Link to="/portfolio/weather-music" className="card card-link">
             <h3>Weather Music</h3>
             <p>
-              A new applet that maps forecast conditions to musical ideas so practice feels connected to the day&apos;s
-              atmosphere.
+              A step-sequencer bass synth that uses the weather to determine the notes and sounds.
             </p>
             <span className="pill">View project</span>
           </Link>
-          <Link to="/music-practice-pal" className="card card-link">
+          <Link to="/portfolio/music-practice-pal" className="card card-link">
             <h3>Music Practice Pal</h3>
             <p>
               A set of tools for learning and practicing music rudiments created with{" "}

@@ -4,7 +4,7 @@ const APPLETS = [
   {
     id: "key-to-key-signatures",
     title: "The Key to Key Signatures",
-    description: "Practice identifying and understanding key signatures across all major and minor keys.",
+    description: "Practice identifying and understanding key signatures across all major and minor keys. (Work in progress)",
   }
 ];
 
@@ -35,7 +35,7 @@ export const MusicPracticePal = () => {
           {APPLETS.map((applet) => (
             <Link
               key={applet.id}
-              to={`/music-practice-pal/${applet.id}`}
+              to={`/portfolio/music-practice-pal/${applet.id}`}
               className="card card-link"
             >
               <h3>{applet.title}</h3>

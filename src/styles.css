@@ -25,8 +25,8 @@
   --border-subtle: var(--border);
   --text:          var(--ink);
   --muted:         var(--ink-muted);
-  --accent:        var(--mustard);
-  --accent-soft:   var(--mustard-soft);
+  --accent:        var(--yellow);
+  --accent-soft:   var(--yellow-soft);
 
   /* ── Layout & shape ──────────────────────────────── */
   --radius-lg:   16px;
@@ -144,8 +144,8 @@ a {
 }
 
 .nav-link.active {
-  border-color: var(--mustard);
-  background: var(--mustard-soft);
+  border-color: var(--yellow);
+  background: var(--yellow-soft);
   color: var(--ink);
   font-weight: 600;
 }
@@ -204,7 +204,7 @@ h2 {
 }
 
 .accent {
-  color: var(--mustard);
+  color: var(--yellow);
 }
 
 /* ── Hero actions ─────────────────────────────────────────── */
@@ -384,7 +384,7 @@ h2 {
 .textarea:focus {
   outline: 2px solid rgba(212,160,23,.55);
   outline-offset: 1px;
-  border-color: var(--mustard);
+  border-color: var(--yellow);
 }
 
 .textarea {
@@ -462,8 +462,8 @@ h2 {
 }
 
 .modal-close:hover {
-  background: var(--mustard-soft);
-  border-color: var(--mustard);
+  background: var(--yellow-soft);
+  border-color: var(--yellow);
 }
 
 /* ── K2K carousel ─────────────────────────────────────────── */
@@ -479,8 +479,8 @@ h2 {
 }
 
 .k2k-nav-active {
-  border-color: var(--mustard) !important;
-  background: var(--mustard-soft) !important;
+  border-color: var(--yellow) !important;
+  background: var(--yellow-soft) !important;
   color: #3a2800 !important;
 }
 
@@ -568,8 +568,8 @@ h2 {
 
 .k2k-between.active {
   color: #3a2800;
-  border-color: var(--mustard);
-  background: var(--mustard-soft);
+  border-color: var(--yellow);
+  background: var(--yellow-soft);
 }
 
 .k2k-note-chip {
@@ -588,8 +588,8 @@ h2 {
 
 .k2k-note-chip.active {
   color: #3a2800;
-  border-color: var(--mustard);
-  background: var(--mustard-soft);
+  border-color: var(--yellow);
+  background: var(--yellow-soft);
   box-shadow: 0 0 0 2px rgba(212,160,23,.2);
 }
 
@@ -633,7 +633,7 @@ h2 {
   cursor: grab;
   border: 1px dashed rgba(212,160,23,.7);
   border-radius: var(--radius-lg);
-  background: var(--mustard-soft);
+  background: var(--yellow-soft);
   color: #3a2800;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -692,7 +692,7 @@ h2 {
 
 .k2k-slider-frame.dragging {
   cursor: grabbing;
-  border-color: var(--mustard);
+  border-color: var(--yellow);
   box-shadow: 0 0 0 2px rgba(212,160,23,.15);
 }
 
@@ -761,8 +761,8 @@ h2 {
 }
 
 .k2k-interval-cell.focused {
-  border-color: var(--mustard);
-  background: var(--mustard-soft);
+  border-color: var(--yellow);
+  background: var(--yellow-soft);
   box-shadow: 0 6px 14px rgba(212,160,23,.22);
 }
 
@@ -774,8 +774,8 @@ h2 {
   aspect-ratio: 1 / 1;
   min-width: 0;
   border-radius: 10px;
-  border: 2px solid var(--mustard);
-  background: var(--mustard-soft);
+  border: 2px solid var(--yellow);
+  background: var(--yellow-soft);
   color: #3a2800;
   text-align: center;
   font-weight: 800;
@@ -810,7 +810,7 @@ h2 {
 }
 
 .k2k-start-button:hover {
-  border-color: var(--mustard);
+  border-color: var(--yellow);
   background: rgba(212,160,23,.2);
 }
 
@@ -826,7 +826,7 @@ h2 {
 @keyframes k2kStartGlow {
   0%, 100% {
     box-shadow: 0 0 0 1px rgba(212,160,23,.35), 0 0 0 0 rgba(212,160,23,.35);
-    background: var(--mustard-soft);
+    background: var(--yellow-soft);
   }
   50% {
     box-shadow: 0 0 0 1px rgba(212,160,23,.55), 0 0 22px 4px rgba(212,160,23,.25);
@@ -890,8 +890,8 @@ h2 {
 }
 
 .k2k-scale-cell.active {
-  border-color: var(--mustard);
-  background: var(--mustard-soft);
+  border-color: var(--yellow);
+  background: var(--yellow-soft);
   box-shadow: 0 6px 14px rgba(212,160,23,.2);
 }
 
@@ -1017,8 +1017,8 @@ h2 {
 }
 
 .weather-location-toggle:hover {
-  border-color: var(--mustard);
-  background: var(--mustard-soft);
+  border-color: var(--yellow);
+  background: var(--yellow-soft);
 }
 
 .weather-location-menu {
@@ -1052,7 +1052,7 @@ h2 {
 }
 
 .weather-location-option:hover {
-  background: var(--mustard-soft);
+  background: var(--yellow-soft);
 }
 
 .weather-location-option.highlighted {
@@ -1096,8 +1096,8 @@ h2 {
 }
 
 .weather-step.on {
-  border-color: var(--mustard);
-  background: var(--mustard-soft);
+  border-color: var(--yellow);
+  background: var(--yellow-soft);
 }
 
 .weather-step.active {
@@ -1256,7 +1256,7 @@ h2 {
 
 .drum-step-num-active {
   opacity: 1;
-  color: var(--mustard);
+  color: var(--yellow);
 }
 
 .drum-track-label {
@@ -1288,7 +1288,7 @@ h2 {
 }
 
 /* Per-track warm recolours */
-.drum-step-kick.drum-step-on  { background: var(--mustard);   box-shadow: 0 0 8px rgba(212,160,23,.55); }
+.drum-step-kick.drum-step-on  { background: var(--yellow);   box-shadow: 0 0 8px rgba(212,160,23,.55); }
 .drum-step-snare.drum-step-on { background: var(--pink-deep); box-shadow: 0 0 8px rgba(232,149,168,.55); }
 .drum-step-hihat.drum-step-on { background: #f97316;          box-shadow: 0 0 8px rgba(249,115,22,.5); }   /* warm orange */
 .drum-step-clap.drum-step-on  { background: #a78bfa;          box-shadow: 0 0 8px rgba(167,139,250,.5); }  /* soft lavender */
@@ -1354,7 +1354,7 @@ h2 {
 }
 
 .bass-group-active {
-  border-color: var(--mustard);
+  border-color: var(--yellow);
   box-shadow: 0 0 0 2px rgba(212,160,23,.2);
 }
 
@@ -1397,14 +1397,14 @@ h2 {
 }
 
 .bass-degree-btn:hover {
-  background: var(--mustard-soft);
+  background: var(--yellow-soft);
   color: var(--ink);
   border-color: var(--border-warm);
 }
 
 .bass-degree-active {
-  background: var(--mustard) !important;
-  border-color: var(--mustard) !important;
+  background: var(--yellow) !important;
+  border-color: var(--yellow) !important;
   color: #1f1600 !important;
 }
 
@@ -1442,13 +1442,13 @@ h2 {
 }
 
 .bass-step-off:hover {
-  background: var(--mustard-soft);
+  background: var(--yellow-soft);
   border-color: var(--border-warm);
 }
 
 .bass-step-on {
   background: rgba(212,160,23,.35);
-  border-color: var(--mustard);
+  border-color: var(--yellow);
   color: #3a2800;
 }
 

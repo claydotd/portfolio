@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <title>My Portfolio</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      // Pick up the redirect path saved by 404.html
+      const redirect = sessionStorage.getItem('redirect');
+      if (redirect) {
+        sessionStorage.removeItem('redirect');
+        window.history.replaceState(null, '', redirect);
+      }
+    </script>
     <script type="module" crossorigin src="/portfolio/assets/index-T_O1Ajv7.js"></script>
     <link rel="stylesheet" crossorigin href="/portfolio/assets/index-BFnZIyg4.css">
   </head>

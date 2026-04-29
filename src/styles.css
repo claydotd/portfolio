@@ -981,20 +981,88 @@ h2 {
   border-color: rgba(232,149,168,.5);
 }
 
-/* ── Weather music panel ──────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   WEATHER MUSIC PANEL
+   ═══════════════════════════════════════════════════════════ */
+
 .weather-music-panel {
   display: grid;
   gap: 1rem;
 }
 
+/* ── Toolbar: 4 columns of controls + a centred action row ── */
 .weather-music-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1.1fr) minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  /* col 1: location+reload stack | col 2: tempo+volume stack | col 3: scale controls | col 4: instrument pills */
+  grid-template-columns: minmax(200px, 1.2fr) minmax(160px, 1fr) minmax(140px, auto) auto;
+  grid-template-rows: auto auto;
+  column-gap: 0.9rem;
+  row-gap: 0.75rem;
   align-items: end;
-  gap: 0.9rem;
 }
 
-.weather-location-picker { position: relative; }
+/* Column 1: location picker stacked above reload button */
+.weather-location-picker {
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+}
+
+.weather-reload-btn {
+  grid-column: 1;
+  grid-row: 2;
+  /* stretch to fill col width so it lines up with the location input */
+  width: 100%;
+}
+
+/* Column 2: tempo stacked above melody volume */
+.weather-bpm-control {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.weather-volume-control {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+/* Column 3: scale controls (root + mode stacked inside their own flex column) */
+.weather-scale-controls {
+  grid-column: 3;
+  grid-row: 1 / span 2;   /* span both rows so it fills the full height */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-self: stretch;
+  justify-content: space-between;
+  min-width: 140px;
+}
+
+/* Column 4: instrument pill stack */
+.instrument-pill-stack {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-self: stretch;
+  justify-content: space-between;
+}
+
+/* Row 3: full-width centred start/stop button */
+.weather-sequencer-start-row {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  justify-content: center;
+  padding-top: 0.25rem;
+}
+
+.weather-sequencer-start-row .btn {
+  min-width: 200px;
+}
+
+/* ── Location combobox ────────────────────────────────────── */
 .weather-location-combobox { position: relative; }
 
 .weather-location-combobox .input {
@@ -1067,9 +1135,13 @@ h2 {
   font-family: system-ui, sans-serif;
 }
 
-.weather-bpm-control input[type="range"] { width: 100%; }
-.weather-mode-select { width: 100%; }
+.weather-bpm-control input[type="range"],
+.weather-volume-control input[type="range"] { width: 100%; }
 
+.weather-mode-select,
+.weather-root-select { width: 100%; }
+
+/* ── Sequencer grid ───────────────────────────────────────── */
 .weather-sequencer-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1117,6 +1189,15 @@ h2 {
   font-weight: 700;
 }
 
+/* ── Volume sliders inside overlays ───────────────────────── */
+.overlay-volume-control {
+  margin-bottom: 1rem;
+}
+
+.overlay-volume-control input[type="range"] {
+  width: 100%;
+}
+
 /* ── Footer ───────────────────────────────────────────────── */
 .app-footer {
   padding-bottom: 1.5rem;
@@ -1144,8 +1225,33 @@ h2 {
     --k2k-slide-gap: 0.7rem;
   }
 
-  .weather-music-toolbar       { grid-template-columns: minmax(0, 1fr); }
-  .weather-sequencer-grid      { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Toolbar collapses to single column on mobile */
+  .weather-music-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .weather-location-picker,
+  .weather-reload-btn,
+  .weather-bpm-control,
+  .weather-volume-control,
+  .weather-scale-controls,
+  .instrument-pill-stack {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .weather-scale-controls,
+  .instrument-pill-stack {
+    align-self: auto;
+    justify-content: flex-start;
+  }
+
+  .weather-sequencer-start-row {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .weather-sequencer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ── Drum pill button ─────────────────────────────────────── */
@@ -1179,6 +1285,9 @@ h2 {
   background: rgba(44,35,24,.5);
   backdrop-filter: blur(6px);
   animation: drum-overlay-in 0.18s ease;
+  /* Allow scrolling the backdrop on very small screens */
+  overflow-y: auto;
+  padding: 1rem;
 }
 
 @keyframes drum-overlay-in {
@@ -1194,15 +1303,26 @@ h2 {
   padding: 1.75rem 2rem;
   width: min(96vw, 860px);
   box-shadow: var(--shadow-soft);
+  /* Don't let the panel itself scroll — the backdrop handles overflow */
+  max-height: none;
 }
 
+/* ── Drum overlay header: keep close button always reachable ─ */
 .drum-overlay-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   flex-wrap: wrap;
+  /* Sticky so close button stays in view while scrolling the overlay */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
+  border-radius: 12px 12px 0 0;
+  padding: 0.5rem 0;
+  margin-top: -0.5rem;
 }
 
 .drum-overlay-title {
@@ -1290,8 +1410,8 @@ h2 {
 /* Per-track warm recolours */
 .drum-step-kick.drum-step-on  { background: var(--yellow);   box-shadow: 0 0 8px rgba(212,160,23,.55); }
 .drum-step-snare.drum-step-on { background: var(--pink-deep); box-shadow: 0 0 8px rgba(232,149,168,.55); }
-.drum-step-hihat.drum-step-on { background: #f97316;          box-shadow: 0 0 8px rgba(249,115,22,.5); }   /* warm orange */
-.drum-step-clap.drum-step-on  { background: #a78bfa;          box-shadow: 0 0 8px rgba(167,139,250,.5); }  /* soft lavender */
+.drum-step-hihat.drum-step-on { background: #f97316;          box-shadow: 0 0 8px rgba(249,115,22,.5); }
+.drum-step-clap.drum-step-on  { background: #a78bfa;          box-shadow: 0 0 8px rgba(167,139,250,.5); }
 
 .drum-step-active {
   outline: 2px solid var(--ink);
@@ -1307,30 +1427,14 @@ h2 {
   font-family: system-ui, sans-serif;
 }
 
-/* ── Sequencer animation ──────────────────────────────────── */
-.sequencer-animation {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 16px;
+/* ── Bass overlay specifics ───────────────────────────────── */
+.bass-overlay-inner {
+  max-width: 960px;
+  /* On small screens the bass grid is tall — let the scrollable backdrop handle it */
+  overflow: visible;
 }
 
-.sequencer-animation-image {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
-}
-
-/* ── Stacked instrument pills ─────────────────────────────── */
-.instrument-pill-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* ── Bass overlay ─────────────────────────────────────────── */
-.bass-overlay-inner { max-width: 960px; }
-
+/* ── Bass grid ────────────────────────────────────────────── */
 .bass-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1340,6 +1444,25 @@ h2 {
 
 @media (max-width: 700px) {
   .bass-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Tighten overlay padding on mobile so close btn is closer to top */
+  .bass-overlay-inner {
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  /* Drum overlay inner also gets tighter padding on mobile */
+  .drum-overlay-inner {
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  /* Drum grid: hide track label text, keep emoji, compress columns */
+  .drum-row {
+    grid-template-columns: 2rem repeat(16, 1fr);
+  }
+
+  .drum-track-label span:not(.drum-track-emoji) {
+    display: none;
+  }
 }
 
 .bass-group {
@@ -1464,9 +1587,21 @@ h2 {
 }
 
 /* ── Weather scale controls ───────────────────────────────── */
-.weather-scale-controls {
+.weather-root-control,
+.weather-mode-control {
+  flex: 1;
+}
+
+/* ── Sequencer animation ──────────────────────────────────── */
+.sequencer-animation {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-width: 140px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.sequencer-animation-image {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
 }

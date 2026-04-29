@@ -30,9 +30,9 @@ type ModeName = "ionian" | "aeolian" | "dorian" | "mixolydian";
 
 type DrumTrack = "kick" | "snare" | "hihat" | "clap";
 
-// Bass panel: 16 groups, each group has 4 steps.
-// Each step stores a scale degree index (0–7, where 0 = root, 7 = octave up).
-// The user picks ONE scale degree per group; all 4 steps in the group play that degree.
+// Bass panel: 16 groups, each group has 4 steps
+// Each step stores a scale degree index (0–7, where 0 = root, 7 = octave up)
+// The user picks a scale degree for each group (all 4 steps in the group play the same note)
 type BassGroup = {
   degree: number; // 0–7
   stepsOn: boolean[]; // length 4 — which of the 4 steps in this group are active
@@ -71,6 +71,7 @@ const LOCATION_OPTIONS: LocationOption[] = [
   { id: "buenos-aires-ar", name: "Buenos Aires", countryName: "Argentina", lat: -34.6037, lon: -58.3816 },
   { id: "lagos-ng", name: "Lagos", countryName: "Nigeria", lat: 6.5244, lon: 3.3792 },
   { id: "cape-town-za", name: "Cape Town", countryName: "South Africa", lat: -33.9249, lon: 18.4241 },
+  { id: "manila-ph", name: "Manila", countryName: "Philippines", lat: 14.5995, lon: 120.9842 },
   { id: "tokyo-jp", name: "Tokyo", countryName: "Japan", lat: 35.6762, lon: 139.6503 },
   { id: "seoul-kr", name: "Seoul", countryName: "South Korea", lat: 37.5665, lon: 126.978 },
   { id: "mumbai-in", name: "Mumbai", countryName: "India", lat: 19.076, lon: 72.8777 },
@@ -80,6 +81,7 @@ const LOCATION_OPTIONS: LocationOption[] = [
   { id: "mcmurdo-aq", name: "McMurdo Station", countryName: "Antarctica", lat: -77.8419, lon: 166.6863 },
 ];
 
+// for matching location to nearest available city in case API doesn't deliver forecast for user location
 const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371; // Earth radius km
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -125,21 +127,6 @@ const mapWeatherToScaleDegree = (condition: string): number => {
   return 3;
 };
 
-const tempMinToNoteLength = (tempMin: number): string => {
-  const clamped = Math.max(-10, Math.min(15, tempMin));
-  const t = 1 - (clamped + 10) / 25; // cold → 1, warm → 0
-
-  if (t > 0.75) return "1n";   // very cold → very long
-  if (t > 0.5)  return "2n";
-  if (t > 0.25) return "4n";
-  return "8n";                 // warm → short
-};
-
-const tempMaxToVelocity = (tempMax: number): number => {
-  const clamped = Math.max(-10, Math.min(40, tempMax));
-  return 0.3 + ((clamped + 10) / 50) * 0.7; // 0.3 → 1.0
-};
-
 const toDateLabel = (unixSeconds: number): string => {
   const date = new Date(unixSeconds * 1000);
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -159,7 +146,7 @@ const MODE_LABELS: Record<ModeName, string> = {
   mixolydian: "Mixolydian",
 };
 
-// Chromatic root notes — semitone offset from C
+// Chromatic root notes (semitone offset from C)
 const ROOT_NOTES: { label: string; semitones: number }[] = [
   { label: "C",  semitones: 0  },
   { label: "C♯/D♭", semitones: 1  },
@@ -175,7 +162,7 @@ const ROOT_NOTES: { label: string; semitones: number }[] = [
   { label: "B",  semitones: 11 },
 ];
 
-// Scale degree display labels
+// Scale degree display labels (because real people don't 0-index these things)
 const DEGREE_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8ve"];
 
 const weatherIconForCondition = (condition: string): string => {
@@ -199,15 +186,19 @@ const DRUM_TRACKS: { id: DrumTrack; label: string; emoji: string }[] = [
 const DEFAULT_DRUM_PATTERN: Record<DrumTrack, boolean[]> = {
   kick:  [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0].map(Boolean),
   snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0].map(Boolean),
-  hihat: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0].map(Boolean),
-  clap:  [0,0,0,0, 0,0,0,0, 0,0,0,0, 1,0,1,0].map(Boolean),
+  hihat: [0,0,1,1, 0,0,1,1, 0,0,1,1, 0,0,1,1].map(Boolean),
+  clap:  [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0].map(Boolean),
 };
 
-// Default bass: 16 groups, each with degree 0 (root),
-const DEFAULT_BASS_GROUPS: BassGroup[] = Array.from({ length: 16 }, (_, i) => ({
-  degree: i % 4 === 0 ? 0 : (i % 4 === 2 ? 4 : 0), // slight variation
-  stepsOn: [true, true, true, true],
-}));
+// Default bass: 16 groups, 1 bar root, 1 bar 4^, 1 bar root, 1 bar 4^
+const DEFAULT_BASS_GROUPS: BassGroup[] = Array.from({ length: 16 }, (_, i) => {
+  const cycleIndex = i % 8; // repeat every 8 steps
+
+  return {
+    degree: cycleIndex < 4 ? 0 : 3,
+    stepsOn: [true, true, true, true],
+  };
+});
 
 const OPENWEATHER_API_KEY = weather_api_key;
 const OPENWEATHER_DAILY_ENDPOINT = "https://api.openweathermap.org/data/2.5/forecast/daily";
@@ -250,12 +241,14 @@ const parseForecastDays = (data: OpenWeatherDailyResponse): ForecastDay[] => {
   ].slice(0, FORECAST_STEP_COUNT);
 };
 
-// ── Weather → synth parameter helpers ───────────────────────────────────────
+// Weather → synth parameter helpers
 
-const tempToFilterCutoff = (tempMax: number): number => {
-  const clamped = Math.max(-10, Math.min(40, tempMax));
+// avgTemp: freq high when warm, low when cold
+const tempToFilterCutoff = (avgTemp: number): number => {
+  const clamped = Math.max(-10, Math.min(40, avgTemp));
   const t = (clamped + 10) / 50;
-  return Math.round(100 + t * t * 3900);
+  //thresholds 12000Hz → 20000Hz gives light change with some movement
+  return Math.round(12000 + t * t * 20000);
 };
 
 const tempToRelease = (tempMin: number): number => {
@@ -266,15 +259,37 @@ const tempToRelease = (tempMin: number): number => {
 
 const descriptionToDistortion = (description: string): number => {
   const d = description.toLowerCase();
-  if (d.includes("thunder") || d.includes("storm"))    return 0.55;
-  if (d.includes("heavy"))                              return 0.40;
-  if (d.includes("moderate") || d.includes("drizzle")) return 0.25;
-  if (d.includes("light") || d.includes("overcast"))   return 0.10;
-  if (d.includes("clear") || d.includes("few"))        return 0.0;
+  if (d.includes("thunder") || d.includes("storm"))    return 0.20;
+  if (d.includes("heavy"))                              return 0.18;
+  if (d.includes("moderate") || d.includes("drizzle")) return 0.16;
+  if (d.includes("light") || d.includes("overcast"))   return 0.14;
+  if (d.includes("clear") || d.includes("few"))        return 0.10;
   return 0.15;
 };
 
-// ── Derive MIDI note from scale degree + mode + root + base octave ──────────
+//   t > 0.90  → very cold (≤ ~-8 °C)  → "1n"
+//   t > 0.70  → cold     (≤ ~-3 °C)   → "2n"
+//   t > 0.40  → cool     (≤ ~+6 °C)   → "4n"
+//   otherwise  → mild/warm (> +6 °C)   → "8n"
+const tempMinToNoteLength = (tempMin: number): string => {
+  const clamped = Math.max(-10, Math.min(15, tempMin));
+  const t = 1 - (clamped + 10) / 25; // cold → 1, warm → 0
+
+  if (t > 0.90) return "1n";
+  if (t > 0.70) return "2n";
+  if (t > 0.40) return "4n";
+  return "8n";
+};
+
+// quadratic curve for velocity
+// cold (-10 °C max) → 0.15; hot (40 °C max) → 1.0 (full)
+const tempMaxToVelocity = (tempMax: number): number => {
+  const clamped = Math.max(-10, Math.min(40, tempMax));
+  const t = (clamped + 10) / 50; // 0 → 1
+  return 0.15 + t * t * 0.85;
+};
+
+// return note from scale degree + mode + root + base octave
 const degreeToNote = (degree: number, mode: ModeName, octave: number, rootSemitones = 0): string => {
   const intervals = MODE_INTERVALS[mode];
   // degree 7 = octave above root
@@ -301,24 +316,31 @@ export const WeatherMusic = () => {
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
   const [animFrame, setAnimFrame] = useState(0);
 
-  // Drum state
+  // Volume default states dB
+  const [melodyVolume, setMelodyVolume] = useState(-16);
+  const [drumVolume, setDrumVolume] = useState(-6);
+  const [bassVolume, setBassVolume] = useState(-10);
+
+  // Drum default state
   const [drumPattern, setDrumPattern] = useState<Record<DrumTrack, boolean[]>>(DEFAULT_DRUM_PATTERN);
   const [drumsEnabled, setDrumsEnabled] = useState(false);
   const [drumGridOpen, setDrumGridOpen] = useState(false);
 
-  // Bass state
+  // Bass default state
   const [bassGroups, setBassGroups] = useState<BassGroup[]>(DEFAULT_BASS_GROUPS);
   const [bassEnabled, setBassEnabled] = useState(false);
   const [bassGridOpen, setBassGridOpen] = useState(false);
   // activeBassStep tracks which of the 64 bass steps is currently active
   const [activeBassStep, setActiveBassStep] = useState<number | null>(null);
 
-  // ── Refs ────────────────────────────────────────────────────────────────────
-  // Polyphonic 80s melody synth
+  // Refs
+  // Polyphonic synth stuff
   const polySynthRef = useRef<Tone.PolySynth | null>(null);
   const polyChorusRef = useRef<Tone.Chorus | null>(null);
   const polyReverbRef = useRef<Tone.Reverb | null>(null);
   const polyFilterRef = useRef<Tone.Filter | null>(null);
+  // distortion node for melody synth
+  const polyDistortionRef = useRef<Tone.Distortion | null>(null);
   const sequenceRef = useRef<Tone.Sequence<number> | null>(null);
 
   const locationComboboxRef = useRef<HTMLDivElement | null>(null);
@@ -326,6 +348,8 @@ export const WeatherMusic = () => {
   // Drum refs
   const drumSynthsRef = useRef<Record<string, Tone.MembraneSynth | Tone.NoiseSynth | Tone.MetalSynth> | null>(null);
   const drumSequenceRef = useRef<Tone.Sequence<number> | null>(null);
+  // Drum bus volume
+  const drumGainRef = useRef<Tone.Gain | null>(null);
 
   // Bass refs
   const bassSynthRef = useRef<Tone.MonoSynth | null>(null);
@@ -355,18 +379,18 @@ export const WeatherMusic = () => {
     [forecast, selectedMode, selectedRoot]
   );
 
-  // ── 80s Polyphonic melody synth setup (runs once) ───────────────────────────
+  // 80's melody synth setup
   useEffect(() => {
-    // Classic 80s poly synth: sawtooth + slight detuned second osc, slow attack, long release
+    // Classic 80's sparkly poly synth
     polySynthRef.current = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: "sawtooth" },
       envelope: {
         attack: 0.06,
         decay: 0.4,
         sustain: 0.65,
-        release: 2.8,    // Long ring-out — notes sustain and overlap
+        release: 2.8, 
       },
-      volume: -12,
+      volume: -16,
     });
 
     // Stereo chorus for extra 80's vibes
@@ -380,12 +404,16 @@ export const WeatherMusic = () => {
     // Reverb
     polyReverbRef.current = new Tone.Reverb({ decay: 4.0, wet: 0.35 });
 
-    // Gentle high-pass to keep synth from muddying the bass
-    polyFilterRef.current = new Tone.Filter({ type: "highpass", frequency: 180, rolloff: -12 });
+    // distortion amount will be set per-step from weather description (0 = clean, 0.55 = heavy)
+    polyDistortionRef.current = new Tone.Distortion({ distortion: 0, wet: 1.0 });
 
-    // Chain: polySynth → chorus → reverb → highpass → destination
+    // high-pass filter: frequency is updated per-step from avg daily temp
+    polyFilterRef.current = new Tone.Filter({ type: "lowpass", frequency: 4000, rolloff: -12 });
+
+    // signal chain: polySynth → chorus → distortion → reverb → lowpass filter → destination
     polySynthRef.current.connect(polyChorusRef.current);
-    polyChorusRef.current.connect(polyReverbRef.current);
+    polyChorusRef.current.connect(polyDistortionRef.current);
+    polyDistortionRef.current.connect(polyReverbRef.current);
     polyReverbRef.current.connect(polyFilterRef.current);
     polyFilterRef.current.toDestination();
 
@@ -412,123 +440,169 @@ export const WeatherMusic = () => {
       polyReverbRef.current = null;
       polyFilterRef.current?.dispose();
       polyFilterRef.current = null;
+      polyDistortionRef.current?.dispose();
+      polyDistortionRef.current = null;
       void Tone.Transport.stop();
       Tone.Transport.cancel(0);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
-  // ── Drum synth setup (runs once) ────────────────────────────────────────────
+// Drum synth setup (runs once)
+useEffect(() => {
+  const kickSynth = new Tone.MembraneSynth({
+    pitchDecay: 0.015,
+    octaves: 6,
+    envelope: {
+      attack: 0.001,
+      decay: 0.35,
+      sustain: 0,
+      release: 0.1,
+    },
+    volume: -4,
+  });
+
+  const snareSynth = new Tone.NoiseSynth({
+    noise: { type: "pink" },
+    envelope: {
+      attack: 0.001,
+      decay: 0.18,
+      sustain: 0,
+      release: 0.05,
+    },
+    volume: -4,
+  });
+
+  const hihatSynth = new Tone.MetalSynth({
+    envelope: {
+      attack: 0.001,
+      decay: 0.06,
+      release: 0.02,
+    },
+    harmonicity: 5,
+    modulationIndex: 20,
+    resonance: 4000,
+    octaves: 2,
+    volume: -14,
+  });
+
+  const clapSynth = new Tone.NoiseSynth({
+    noise: { type: "white" },
+    envelope: {
+      attack: 0.001,
+      decay: 0.15,
+      sustain: 0,
+      release: 0.05,
+    },
+    volume: -8,
+  });
+
+  const drumReverb = new Tone.Reverb({
+    decay: 1.6,   
+    wet: 0.25,   
+  }).toDestination();
+
+  const drumCompressor = new Tone.Compressor({
+    threshold: -18,
+    ratio: 4,
+    attack: 0.003,
+    release: 0.1,
+  });
+
+  const drumEQ = new Tone.EQ3({
+    low: 0,
+    mid: 1,
+    high: 2, // boost highs for 80s sheen
+  });
+
+  // Shared gain node for master drum volume control (-6 dB default)
+  const drumGain = new Tone.Gain(Tone.dbToGain(-6));
+  drumGainRef.current = drumGain;
+
+  // Signal chain: individual synths → EQ → compressor → gain → reverb → destination
+  kickSynth.connect(drumEQ);
+  snareSynth.connect(drumEQ);
+  hihatSynth.connect(drumEQ);
+  clapSynth.connect(drumEQ);
+  drumEQ.connect(drumCompressor);
+  drumCompressor.connect(drumGain);
+  drumGain.connect(drumReverb);
+
+  drumSynthsRef.current = {
+    kick: kickSynth,
+    snare: snareSynth,
+    hihat: hihatSynth,
+    clap: clapSynth,
+  };
+
+  return () => {
+    drumSequenceRef.current?.stop();
+    drumSequenceRef.current?.dispose();
+    drumSequenceRef.current = null;
+
+    kickSynth.dispose();
+    snareSynth.dispose();
+    hihatSynth.dispose();
+    clapSynth.dispose();
+    drumReverb.dispose();
+    drumCompressor.dispose();
+    drumEQ.dispose();
+    drumGain.dispose();
+    drumGainRef.current = null;
+  };
+
+}, []);
+
+// bass setup
+useEffect(() => {
+  bassSynthRef.current = new Tone.MonoSynth({
+    oscillator: { type: "sawtooth" },
+    envelope: {
+      attack: 0.01,
+      decay: 0.1,
+      sustain: 0.6,
+      release: 0.3,
+    },
+    filterEnvelope: {
+      attack: 0.01,
+      decay: 0.1,
+      sustain: 0.5,
+      release: 0.3,
+      baseFrequency: 80,
+      octaves: 2.5,
+    },
+    volume: -10,
+  }).toDestination();
+
+  return () => {
+    bassSequenceRef.current?.stop();
+    bassSequenceRef.current?.dispose();
+    bassSequenceRef.current = null;
+    bassSynthRef.current?.dispose();
+    bassSynthRef.current = null;
+  };
+}, []);
+
+  // Volume sync effects
   useEffect(() => {
-    const kickSynth = new Tone.MembraneSynth({
-      pitchDecay: 0.03,
-      octaves: 4,
-      envelope: {
-        attack: 0.02,
-        decay: 0.6,
-        sustain: 0,
-        release: 0.3,
-      },
-      volume: -6,
-    });
+    if (polySynthRef.current) {
+      polySynthRef.current.set({ volume: melodyVolume });
+    }
+  }, [melodyVolume]);
 
-    const snareSynth = new Tone.NoiseSynth({
-      noise: { type: "pink" },
-      envelope: {
-        attack: 0.02,
-        decay: 0.4,
-        sustain: 0,
-        release: 0.2,
-      },
-      volume: -8,
-    });
-
-    const hihatSynth = new Tone.MetalSynth({
-      envelope: {
-        attack: 0.01,
-        decay: 0.12,
-        release: 0.08,
-      },
-      harmonicity: 3,
-      modulationIndex: 10,
-      resonance: 2000,
-      octaves: 1,
-      volume: -18,
-    });
-
-    const clapSynth = new Tone.NoiseSynth({
-      noise: { type: "pink" },
-      envelope: {
-        attack: 0.01,
-        decay: 0.3,
-        sustain: 0,
-        release: 0.25,
-      },
-      volume: -10,
-    });
-
-    const clapReverb = new Tone.Reverb({ decay: 1.2, wet: 0.45 }).toDestination();
-    clapSynth.connect(clapReverb);
-
-    const drumReverb = new Tone.Reverb({
-      decay: 3.5,
-      wet: 0.6,
-    }).toDestination();
-    
-    const drumFilter = new Tone.Filter({
-      type: "lowpass",
-      frequency: 1200,
-    }).connect(drumReverb);
-
-    drumSynthsRef.current = { kick: kickSynth, snare: snareSynth, hihat: hihatSynth, clap: clapSynth };
-    const drumChorus = new Tone.Chorus({
-      frequency: 0.3,
-      delayTime: 8,
-      depth: 0.4,
-      wet: 0.5,
-    }).start();
-    
-    drumFilter.connect(drumChorus);
-    drumChorus.connect(drumReverb);
-    kickSynth.connect(drumFilter);
-    snareSynth.connect(drumFilter);
-    hihatSynth.connect(drumFilter);
-    clapSynth.connect(drumFilter);
-
-    return () => {
-      drumSequenceRef.current?.stop();
-      drumSequenceRef.current?.dispose();
-      drumSequenceRef.current = null;
-      kickSynth.dispose(); snareSynth.dispose(); hihatSynth.dispose();
-      clapSynth.dispose(); clapReverb.dispose();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Bass synth setup (runs once) ────────────────────────────────────────────
   useEffect(() => {
-    // Punchy analogue bass: sine-triangle blend, tight envelope
-    bassSynthRef.current = new Tone.MonoSynth({
-      oscillator: { type: "sawtooth" },
-      filter: { type: "lowpass", rolloff: -24, Q: 2 },
-      envelope: { attack: 0.008, decay: 0.05, sustain: 0.8, release: 0.95 },
-      filterEnvelope: {
-        attack: 0.005, decay: 0.05, sustain: 0.2, release: 0.35,
-        baseFrequency: 60, octaves: 3.5,
-      },
-      volume: -2,
-    }).toDestination();
+    if (drumGainRef.current) {
+      drumGainRef.current.gain.rampTo(Tone.dbToGain(drumVolume), 0.05);
+    }
+  }, [drumVolume]);
 
-    return () => {
-      bassSequenceRef.current?.stop();
-      bassSequenceRef.current?.dispose();
-      bassSequenceRef.current = null;
-      bassSynthRef.current?.dispose();
-      bassSynthRef.current = null;
-    };
-  }, []);
+  useEffect(() => {
+    if (bassSynthRef.current) {
+      bassSynthRef.current.set({ volume: bassVolume });
+    }
+  }, [bassVolume]);
 
-  // ── Melody sequence rebuild ──────────────────────────────────────────────────
+  // Melody sequence rebuild 
   useEffect(() => {
     if (!sequenceRef.current) return;
     sequenceRef.current.dispose();
@@ -546,6 +620,21 @@ export const WeatherMusic = () => {
         if (poly && day) {
           const release = 1.5 + tempToRelease(day.tempMin) * 1.2;
           poly.set({ envelope: { release } });
+
+          // REINTRODUCED: filter cutoff driven by average daily temperature
+          // Cold days → dark/muffled tone; hot days → bright/open tone
+          const avgTemp = (day.tempMin + day.tempMax) / 2;
+          const cutoff = tempToFilterCutoff(avgTemp);
+          if (polyFilterRef.current) {
+            polyFilterRef.current.frequency.rampTo(cutoff, 0.05);
+          }
+
+          // REINTRODUCED: distortion amount driven by weather description
+          // Clear/sunny → clean; thunderstorms → heavy distortion
+          const distortionAmount = descriptionToDistortion(day.weatherDescription);
+          if (polyDistortionRef.current) {
+            polyDistortionRef.current.distortion = distortionAmount;
+          }
         
           const duration = tempMinToNoteLength(day.tempMin);
           const velocity = tempMaxToVelocity(day.tempMax);
@@ -560,7 +649,7 @@ export const WeatherMusic = () => {
     if (isPlaying) sequenceRef.current.start(0);
   }, [isPlaying, stepsOn, weatherDrivenPitches, forecast]);
 
-  // ── Drum sequence rebuild ────────────────────────────────────────────────────
+  // Drum sequence rebuild 
   useEffect(() => {
     const synths = drumSynthsRef.current;
     if (!synths) return;
@@ -584,7 +673,7 @@ export const WeatherMusic = () => {
     if (isPlaying) drumSequenceRef.current.start(0);
   }, [isPlaying, drumsEnabled, drumPattern]);
 
-  // ── Bass sequence rebuild  ─────────────────────
+  // Bass sequence rebuild 
   useEffect(() => {
     const synth = bassSynthRef.current;
     if (!synth) return;
@@ -603,7 +692,7 @@ export const WeatherMusic = () => {
         const group = bassGroups[groupIndex];
         if (!group || !group.stepsOn[stepInGroup]) return;
 
-        const note = degreeToNote(group.degree, selectedMode, 2, selectedRoot); // Octave 2 for bass
+        const note = degreeToNote(group.degree, selectedMode, 2, selectedRoot);
         synth.triggerAttackRelease(note, "16n", time);
       },
       steps64,
@@ -613,12 +702,12 @@ export const WeatherMusic = () => {
     if (isPlaying) bassSequenceRef.current.start(0);
   }, [isPlaying, bassEnabled, bassGroups, selectedMode]);
 
-  // ── BPM sync ────────────────────────────────────────────────────────────────
+  // BPM sync
   useEffect(() => {
     Tone.Transport.bpm.rampTo(bpm, 0.08);
   }, [bpm]);
 
-  // ── Weather fetch ────────────────────────────────────────────────────────────
+  //  Weather fetch
   const fetchForecast = useCallback(async () => {
     setIsFetchingWeather(true);
     setStatusMessage(`Loading forecast for ${formatLocationLabel(selectedLocation)}...`);
@@ -681,7 +770,7 @@ export const WeatherMusic = () => {
 
   useEffect(() => { void fetchForecast(); }, [fetchForecast, reloadCount]);
 
-  // ── Geolocation ──────────────────────────────────────────────────────────────
+  // Geolocation
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -696,7 +785,7 @@ export const WeatherMusic = () => {
     );
   }, []);
 
-  // ── Close location menu on outside click ─────────────────────────────────────
+  // Close location menu on outside click
   useEffect(() => {
     const onDocumentPointerDown = (event: MouseEvent) => {
       if (!locationComboboxRef.current?.contains(event.target as Node)) setIsLocationMenuOpen(false);
@@ -705,7 +794,7 @@ export const WeatherMusic = () => {
     return () => window.removeEventListener("mousedown", onDocumentPointerDown);
   }, []);
 
-  // ── Playback toggle ──────────────────────────────────────────────────────────
+  // Playback toggle
   const onTogglePlay = async () => {
     if (!sequenceRef.current) return;
     if (!isPlaying) {
@@ -815,6 +904,20 @@ export const WeatherMusic = () => {
             <span>Tempo ({bpm} BPM)</span>
             <input type="range" min={60} max={160} step={1} value={bpm} onChange={(e) => setBpm(Number(e.target.value))} />
           </label>
+
+          {/* Melody volume — always visible in toolbar */}
+          <label className="form-field weather-volume-control">
+            <span>Melody volume ({melodyVolume} dB)</span>
+            <input
+              type="range"
+              min={-40}
+              max={0}
+              step={1}
+              value={melodyVolume}
+              onChange={(e) => setMelodyVolume(Number(e.target.value))}
+            />
+          </label>
+
           {/* Root + Mode selectors stacked */}
           <div className="weather-scale-controls">
             <label className="form-field weather-root-control">
@@ -864,13 +967,16 @@ export const WeatherMusic = () => {
             </div>
           </div>
 
-          <button type="button" className={`btn ${isPlaying ? "ghost" : "primary"}`} onClick={() => void onTogglePlay()}>
-            {isPlaying ? "Stop sequencer" : "Start sequencer"}
-          </button>
-          <button type="button" className="btn ghost"
+          <button type="button" className="btn ghost weather-reload-btn"
             onClick={() => setReloadCount((v) => v + 1)} disabled={isFetchingWeather}>
             {isFetchingWeather ? "Reloading..." : "Reload weather"}
           </button>
+
+          <div className="weather-sequencer-start-row">
+            <button type="button" className={`btn ${isPlaying ? "ghost" : "primary"}`} onClick={() => void onTogglePlay()}>
+              {isPlaying ? "Stop sequencer" : "Start sequencer"}
+            </button>
+          </div>
         </div>
 
         <p className="section-subtitle">{statusMessage}</p>
@@ -905,7 +1011,7 @@ export const WeatherMusic = () => {
             <div className="drum-overlay-header">
               <h2 className="drum-overlay-title">
                 🥁 Drum Machine
-                <span className="drum-overlay-subtitle">vaporwave edition</span>
+                <span className="drum-overlay-subtitle">1 bar · 16th note steps</span>
               </h2>
               <div className="drum-overlay-controls">
                 <button type="button" className={`btn ${drumsEnabled ? "primary" : "ghost"}`} onClick={() => setDrumsEnabled((v) => !v)}>
@@ -915,6 +1021,19 @@ export const WeatherMusic = () => {
                 <button type="button" className="btn ghost" onClick={() => setDrumGridOpen(false)} aria-label="Close drum sequencer">✕</button>
               </div>
             </div>
+
+            {/* Drum volume slider */}
+            <label className="form-field overlay-volume-control">
+              <span>Drum volume ({drumVolume} dB)</span>
+              <input
+                type="range"
+                min={-40}
+                max={0}
+                step={1}
+                value={drumVolume}
+                onChange={(e) => setDrumVolume(Number(e.target.value))}
+              />
+            </label>
 
             <div className="drum-grid">
               <div className="drum-row drum-row-header">
@@ -960,6 +1079,19 @@ export const WeatherMusic = () => {
                 <button type="button" className="btn ghost" onClick={() => setBassGridOpen(false)} aria-label="Close bass sequencer">✕</button>
               </div>
             </div>
+
+            {/* Bass volume slider */}
+            <label className="form-field overlay-volume-control">
+              <span>Bass volume ({bassVolume} dB)</span>
+              <input
+                type="range"
+                min={-40}
+                max={0}
+                step={1}
+                value={bassVolume}
+                onChange={(e) => setBassVolume(Number(e.target.value))}
+              />
+            </label>
 
             {/* Bass grid: 16 groups, each group is a card */}
             <div className="bass-grid">

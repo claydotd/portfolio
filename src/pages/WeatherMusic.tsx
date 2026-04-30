@@ -59,14 +59,16 @@ const LOCATION_OPTIONS: LocationOption[] = [
   { id: "lerwick-gb", name: "Lerwick", countryName: "Scotland", lat: 60.155, lon: -1.145 },
   { id: "london-gb", name: "London", countryName: "England", lat: 51.5072, lon: -0.1276 },
   { id: "dublin-ie", name: "Dublin", countryName: "Ireland", lat: 53.3498, lon: -6.2603 },
+  { id: "copenhagen-dk", name: "Copenhagen", countryName: "Denmark", lat: 55.6760, lon: 12.5683 },
+  { id: "aarhus-dk", name: "Aarhus", countryName: "Denmark", lat: 56.1567, lon: 10.2107 },
+  { id: "toronto-ca", name: "Toronto", countryName: "Canada", lat: 43.6532, lon: -79.3832 },
+  { id: "vancouver-ca", name: "Vancouver", countryName: "Canada", lat: 49.2462, lon: -123.1162 },
   { id: "paris-fr", name: "Paris", countryName: "France", lat: 48.8566, lon: 2.3522 },
   { id: "berlin-de", name: "Berlin", countryName: "Germany", lat: 52.52, lon: 13.405 },
   { id: "madrid-es", name: "Madrid", countryName: "Spain", lat: 40.4168, lon: -3.7038 },
   { id: "rome-it", name: "Rome", countryName: "Italy", lat: 41.9028, lon: 12.4964 },
   { id: "new-york-us", name: "New York", countryName: "United States", lat: 40.7128, lon: -74.006 },
   { id: "nashville-us", name: "Nashville", countryName: "United States", lat: 36.1627, lon: -86.7816 },
-  { id: "toronto-ca", name: "Toronto", countryName: "Canada", lat: 43.6532, lon: -79.3832 },
-  { id: "vancouver-ca", name: "Vancouver", countryName: "Canada", lat: 49.2462, lon: -123.1162 },
   { id: "sao-paulo-br", name: "Sao Paulo", countryName: "Brazil", lat: -23.5558, lon: -46.6396 },
   { id: "buenos-aires-ar", name: "Buenos Aires", countryName: "Argentina", lat: -34.6037, lon: -58.3816 },
   { id: "lagos-ng", name: "Lagos", countryName: "Nigeria", lat: 6.5244, lon: 3.3792 },
@@ -77,6 +79,7 @@ const LOCATION_OPTIONS: LocationOption[] = [
   { id: "mumbai-in", name: "Mumbai", countryName: "India", lat: 19.076, lon: 72.8777 },
   { id: "dubai-ae", name: "Dubai", countryName: "United Arab Emirates", lat: 25.2048, lon: 55.2708 },
   { id: "sydney-au", name: "Sydney", countryName: "Australia", lat: -33.8688, lon: 151.2093 },
+  { id: "melbourne-au", name: "Melbourne", countryName: "Australia", lat: -37.8409, lon: 144.9464 },
   { id: "auckland-nz", name: "Auckland", countryName: "New Zealand", lat: -36.8509, lon: 174.7645 },
   { id: "mcmurdo-aq", name: "McMurdo Station", countryName: "Antarctica", lat: -77.8419, lon: 166.6863 },
 ];
@@ -186,8 +189,8 @@ const DRUM_TRACKS: { id: DrumTrack; label: string; emoji: string }[] = [
 const DEFAULT_DRUM_PATTERN: Record<DrumTrack, boolean[]> = {
   kick:  [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0].map(Boolean),
   snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0].map(Boolean),
-  hihat: [0,0,1,1, 0,0,1,1, 0,0,1,1, 0,0,1,1].map(Boolean),
-  clap:  [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0].map(Boolean),
+  hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0].map(Boolean),
+  clap:  [0,0,0,0, 0,0,0,0, 0,0,0,0, 1,1,1,1].map(Boolean),
 };
 
 // Default bass: 16 groups, 1 bar root, 1 bar 4^, 1 bar root, 1 bar 4^
@@ -247,46 +250,41 @@ const parseForecastDays = (data: OpenWeatherDailyResponse): ForecastDay[] => {
 const tempToFilterCutoff = (avgTemp: number): number => {
   const clamped = Math.max(-10, Math.min(40, avgTemp));
   const t = (clamped + 10) / 50;
-  //thresholds 12000Hz → 20000Hz gives light change with some movement
-  return Math.round(12000 + t * t * 20000);
+  return Math.round(7000 + t * 2000);
 };
 
-const tempToRelease = (tempMin: number): number => {
-  const clamped = Math.max(-10, Math.min(15, tempMin));
-  const t = 1 - (clamped + 10) / 25;
-  return parseFloat((0.2 + t * 1.0).toFixed(2));
+const tempToRelease = (tempMax: number): number => {
+  const clamped = Math.max(-1, Math.min(32, tempMax));
+  const t = 1 - (clamped + 1) / 33;
+  return parseFloat((0.1 + t * 1.0).toFixed(2));
 };
 
 const descriptionToDistortion = (description: string): number => {
-  const d = description.toLowerCase();
-  if (d.includes("thunder") || d.includes("storm"))    return 0.20;
-  if (d.includes("heavy"))                              return 0.18;
-  if (d.includes("moderate") || d.includes("drizzle")) return 0.16;
-  if (d.includes("light") || d.includes("overcast"))   return 0.14;
-  if (d.includes("clear") || d.includes("few"))        return 0.10;
-  return 0.15;
+  // const d = description.toLowerCase();
+  // if (d.includes("thunder") || d.includes("storm"))    return 0.05;
+  // if (d.includes("heavy"))                             return 0.04;
+  // if (d.includes("moderate") || d.includes("drizzle")) return 0.03;
+  // if (d.includes("light") || d.includes("overcast"))   return 0.02;
+  // if (d.includes("clear") || d.includes("few"))        return 0.01;
+  return 0.00;
 };
 
-//   t > 0.90  → very cold (≤ ~-8 °C)  → "1n"
-//   t > 0.70  → cold     (≤ ~-3 °C)   → "2n"
-//   t > 0.40  → cool     (≤ ~+6 °C)   → "4n"
-//   otherwise  → mild/warm (> +6 °C)   → "8n"
 const tempMinToNoteLength = (tempMin: number): string => {
-  const clamped = Math.max(-10, Math.min(15, tempMin));
-  const t = 1 - (clamped + 10) / 25; // cold → 1, warm → 0
+  const clamped = Math.max(-10, Math.min(20, tempMin));
+  const t = 1 - (clamped + 10) / 30; // cold → 1, warm → 0
 
-  if (t > 0.90) return "1n";
-  if (t > 0.70) return "2n";
-  if (t > 0.40) return "4n";
-  return "8n";
+  if (t > 0.90) return "4n";
+  if (t > 0.50) return "8n";
+  if (t > 0.20) return "16n";
+  return "32n";
 };
 
-// quadratic curve for velocity
-// cold (-10 °C max) → 0.15; hot (40 °C max) → 1.0 (full)
-const tempMaxToVelocity = (tempMax: number): number => {
-  const clamped = Math.max(-10, Math.min(40, tempMax));
-  const t = (clamped + 10) / 50; // 0 → 1
-  return 0.15 + t * t * 0.85;
+// velocity mapped to temperature range (high - low) for the day
+const tempRangeToVelocity = (tempMin: number, tempMax: number): number => {
+  const spread = Math.max(0, tempMax - tempMin);
+  const clamped = Math.min(spread, 15); // cap at 15°C spread
+  const t = clamped / 15; // 0 → 1
+  return 1 - t * 0.95;
 };
 
 // return note from scale degree + mode + root + base octave
@@ -347,6 +345,8 @@ export const WeatherMusic = () => {
 
   // Drum refs
   const drumSynthsRef = useRef<Record<string, Tone.MembraneSynth | Tone.NoiseSynth | Tone.MetalSynth> | null>(null);
+  // Ref for the layered snare tonal synth (not stored in drumSynthsRef to keep trigger logic clean)
+  const snareToneRef = useRef<Tone.MembraneSynth | null>(null);
   const drumSequenceRef = useRef<Tone.Sequence<number> | null>(null);
   // Drum bus volume
   const drumGainRef = useRef<Tone.Gain | null>(null);
@@ -410,12 +410,13 @@ export const WeatherMusic = () => {
     // high-pass filter: frequency is updated per-step from avg daily temp
     polyFilterRef.current = new Tone.Filter({ type: "lowpass", frequency: 4000, rolloff: -12 });
 
-    // signal chain: polySynth → chorus → distortion → reverb → lowpass filter → destination
+    // signal chain: polySynth → chorus → distortion  → lowpass filter → reverb → destination
     polySynthRef.current.connect(polyChorusRef.current);
     polyChorusRef.current.connect(polyDistortionRef.current);
-    polyDistortionRef.current.connect(polyReverbRef.current);
-    polyReverbRef.current.connect(polyFilterRef.current);
-    polyFilterRef.current.toDestination();
+    polyDistortionRef.current.connect(polyFilterRef.current);
+    polyFilterRef.current.connect(polyReverbRef.current);
+    polyReverbRef.current.toDestination();
+  
 
     Tone.Transport.bpm.value = bpm;
 
@@ -448,53 +449,71 @@ export const WeatherMusic = () => {
 
   }, []);
 
-// Drum synth setup (runs once)
+// CHANGED: Drum synth setup — more professional sounds
+// Kick: tighter punch with a short sub tail
+// Snare: layered noise + tonal transient (snareToneRef) for crack and body
+// Hi-hat: tighter, higher pitched, less metallic ringing
+// Clap: pink noise with slightly longer decay for more body
 useEffect(() => {
   const kickSynth = new Tone.MembraneSynth({
-    pitchDecay: 0.015,
-    octaves: 6,
+    pitchDecay: 0.04,
+    octaves: 8,
     envelope: {
       attack: 0.001,
-      decay: 0.35,
+      decay: 0.28,
       sustain: 0,
-      release: 0.1,
+      release: 0.18,
     },
-    volume: -4,
+    volume: 2,
   });
 
-  const snareSynth = new Tone.NoiseSynth({
-    noise: { type: "pink" },
+  const snareNoise = new Tone.NoiseSynth({
+    noise: { type: "white" },
     envelope: {
       attack: 0.001,
-      decay: 0.18,
+      decay: 0.12,
       sustain: 0,
-      release: 0.05,
+      release: 0.08,
     },
-    volume: -4,
+    volume: -2,
   });
+
+  // Tonal crack layer for snare body — triggered alongside snareNoise
+  const snareTone = new Tone.MembraneSynth({
+    pitchDecay: 0.008,
+    octaves: 3,
+    envelope: {
+      attack: 0.001,
+      decay: 0.08,
+      sustain: 0,
+      release: 0.04,
+    },
+    volume: -8,
+  });
+  snareToneRef.current = snareTone;
 
   const hihatSynth = new Tone.MetalSynth({
     envelope: {
       attack: 0.001,
-      decay: 0.06,
-      release: 0.02,
+      decay: 0.04,
+      release: 0.01,
     },
-    harmonicity: 5,
-    modulationIndex: 20,
-    resonance: 4000,
-    octaves: 2,
-    volume: -14,
+    harmonicity: 5.1,
+    modulationIndex: 32,
+    resonance: 6000,
+    octaves: 1.5,
+    volume: -16,
   });
 
   const clapSynth = new Tone.NoiseSynth({
-    noise: { type: "white" },
+    noise: { type: "pink" },
     envelope: {
       attack: 0.001,
-      decay: 0.15,
+      decay: 0.09,
       sustain: 0,
-      release: 0.05,
+      release: 0.06,
     },
-    volume: -8,
+    volume: -4,
   });
 
   const drumReverb = new Tone.Reverb({
@@ -502,17 +521,19 @@ useEffect(() => {
     wet: 0.25,   
   }).toDestination();
 
+  // Tighter ratio, lower threshold for more professional glue
   const drumCompressor = new Tone.Compressor({
-    threshold: -18,
-    ratio: 4,
-    attack: 0.003,
-    release: 0.1,
+    threshold: -24,
+    ratio: 6,
+    attack: 0.002,
+    release: 0.08,
   });
 
+  // Boosted lows for kick weight, scooped mids, brightened highs for snap/air
   const drumEQ = new Tone.EQ3({
-    low: 0,
-    mid: 1,
-    high: 2, // boost highs for 80s sheen
+    low: 3,
+    mid: -2,
+    high: 4,
   });
 
   // Shared gain node for master drum volume control (-6 dB default)
@@ -521,7 +542,8 @@ useEffect(() => {
 
   // Signal chain: individual synths → EQ → compressor → gain → reverb → destination
   kickSynth.connect(drumEQ);
-  snareSynth.connect(drumEQ);
+  snareNoise.connect(drumEQ);
+  snareTone.connect(drumEQ);
   hihatSynth.connect(drumEQ);
   clapSynth.connect(drumEQ);
   drumEQ.connect(drumCompressor);
@@ -530,7 +552,7 @@ useEffect(() => {
 
   drumSynthsRef.current = {
     kick: kickSynth,
-    snare: snareSynth,
+    snare: snareNoise,
     hihat: hihatSynth,
     clap: clapSynth,
   };
@@ -541,7 +563,9 @@ useEffect(() => {
     drumSequenceRef.current = null;
 
     kickSynth.dispose();
-    snareSynth.dispose();
+    snareNoise.dispose();
+    snareTone.dispose();
+    snareToneRef.current = null;
     hihatSynth.dispose();
     clapSynth.dispose();
     drumReverb.dispose();
@@ -618,10 +642,10 @@ useEffect(() => {
         const poly = polySynthRef.current;
 
         if (poly && day) {
-          const release = 1.5 + tempToRelease(day.tempMin) * 1.2;
+          const release = 1.5 + tempToRelease(day.tempMax) * 1.2;
           poly.set({ envelope: { release } });
 
-          // REINTRODUCED: filter cutoff driven by average daily temperature
+          // filter cutoff driven by average daily temperature
           // Cold days → dark/muffled tone; hot days → bright/open tone
           const avgTemp = (day.tempMin + day.tempMax) / 2;
           const cutoff = tempToFilterCutoff(avgTemp);
@@ -629,15 +653,16 @@ useEffect(() => {
             polyFilterRef.current.frequency.rampTo(cutoff, 0.05);
           }
 
-          // REINTRODUCED: distortion amount driven by weather description
-          // Clear/sunny → clean; thunderstorms → heavy distortion
+          // distortion amount driven by weather description
+          // Clear/sunny → clean; thunderstorms → heavier
           const distortionAmount = descriptionToDistortion(day.weatherDescription);
           if (polyDistortionRef.current) {
             polyDistortionRef.current.distortion = distortionAmount;
           }
         
           const duration = tempMinToNoteLength(day.tempMin);
-          const velocity = tempMaxToVelocity(day.tempMax);
+          // velocity driven by temperature range
+          const velocity = tempRangeToVelocity(day.tempMin, day.tempMax);
         
           poly.triggerAttackRelease(pitch, duration, time, velocity);
         }
@@ -661,9 +686,17 @@ useEffect(() => {
         (Object.keys(drumPattern) as DrumTrack[]).forEach((track) => {
           if (!drumPattern[track][stepIndex]) return;
           const synth = synths[track];
-          if (track === "kick")  (synth as Tone.MembraneSynth).triggerAttackRelease("C1", "16n", time);
-          else if (track === "snare" || track === "clap") (synth as Tone.NoiseSynth).triggerAttackRelease("16n", time);
-          else if (track === "hihat") (synth as Tone.MetalSynth).triggerAttackRelease("16n", time);
+          if (track === "kick") {
+            (synth as Tone.MembraneSynth).triggerAttackRelease("C1", "16n", time);
+          } else if (track === "snare") {
+            // CHANGED: fire both noise layer and tonal crack layer together
+            (synth as Tone.NoiseSynth).triggerAttackRelease("16n", time);
+            snareToneRef.current?.triggerAttackRelease("C2", "16n", time);
+          } else if (track === "clap") {
+            (synth as Tone.NoiseSynth).triggerAttackRelease("16n", time);
+          } else if (track === "hihat") {
+            (synth as Tone.MetalSynth).triggerAttackRelease("16n", time);
+          }
         });
       },
       Array.from({ length: 16 }, (_, i) => i),
@@ -831,6 +864,7 @@ useEffect(() => {
         <p className="subtitle">
           A 16-step sequencer where the sound and note for each step is set by one day of weather data. Use your location or choose a location, then see what the forecast sounds like!
         </p>
+        <p> Please note that the OpenWeatherMap API doesn't currently work at the minute because I don't have a subscription to make 16-day forecast calls... Please enjoy playing around with my set of example forecasts though!</p>
       </header>
 
       <section className="section weather-music-panel">

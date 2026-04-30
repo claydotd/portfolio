@@ -28,17 +28,18 @@ export const Home = () => {
       </div>
 
       <section id="projects" className="section">
-        <h2>Featured projects</h2>
-        <p className="section-subtitle">Here are a few projects that I'm proud of!</p>
+        <h2>Featured project</h2>
+        <p className="section-subtitle">Here's just one project that I'm proud of! More coming soon...</p>
         <div className="card-grid">
           <Link to="/portfolio/weather-music" className="card card-link">
             <h3>Weather Music</h3>
             <p>
-              A step-sequencer bass synth that uses the weather to determine the notes and sounds.
+              A step-sequenced synth, bass, and drum sequencer that uses the weather to determine the notes and sounds.
+              I used <span className="accent">tone.js</span> and <span className="accent">OpenWeatherMap</span> to create this fun little instrument.
             </p>
             <span className="pill">View project</span>
           </Link>
-          <Link to="/portfolio/music-practice-pal" className="card card-link">
+          {/* <Link to="/portfolio/music-practice-pal" className="card card-link">
             <h3>Music Practice Pal</h3>
             <p>
               A set of tools for learning and practicing music rudiments created with{" "}
@@ -49,7 +50,7 @@ export const Home = () => {
           <article className="card">
             <h3>Recipe Library</h3>
             <p>A user interface for managing recipes and shopping lists created with React and TypeScript.</p>
-          </article>
+          </article> */}
         </div>
       </section>
 

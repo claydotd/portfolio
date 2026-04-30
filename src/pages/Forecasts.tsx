@@ -334,6 +334,44 @@ export type ForecastDay = {
     { dateLabel: "Day 15", weatherMain: "Rain",    weatherDescription: "light rain",         tempMin: 14, tempMax: 21 },
     { dateLabel: "Day 16", weatherMain: "Clear",   weatherDescription: "clear sky",          tempMin: 13, tempMax: 23 },
   ]);
+
+  const AARHUS: ForecastDay[] = withIcons([
+    { dateLabel: "Day 1",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",     tempMin: 5,  tempMax: 11 },
+    { dateLabel: "Day 2",  weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 5,  tempMax: 10 },
+    { dateLabel: "Day 3",  weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 4,  tempMax: 9  },
+    { dateLabel: "Day 4",  weatherMain: "Clouds",  weatherDescription: "broken clouds",       tempMin: 4,  tempMax: 11 },
+    { dateLabel: "Day 5",  weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 5,  tempMax: 13 },
+    { dateLabel: "Day 6",  weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 6,  tempMax: 14 },
+    { dateLabel: "Day 7",  weatherMain: "Clouds",  weatherDescription: "scattered clouds",    tempMin: 6,  tempMax: 13 },
+    { dateLabel: "Day 8",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",     tempMin: 5,  tempMax: 11 },
+    { dateLabel: "Day 9",  weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 5,  tempMax: 10 },
+    { dateLabel: "Day 10", weatherMain: "Clouds",  weatherDescription: "broken clouds",       tempMin: 5,  tempMax: 11 },
+    { dateLabel: "Day 11", weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 6,  tempMax: 14 },
+    { dateLabel: "Day 12", weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 7,  tempMax: 15 },
+    { dateLabel: "Day 13", weatherMain: "Clouds",  weatherDescription: "few clouds",          tempMin: 7,  tempMax: 14 },
+    { dateLabel: "Day 14", weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 6,  tempMax: 11 },
+    { dateLabel: "Day 15", weatherMain: "Clouds",  weatherDescription: "overcast clouds",     tempMin: 5,  tempMax: 10 },
+    { dateLabel: "Day 16", weatherMain: "Clouds",  weatherDescription: "scattered clouds",    tempMin: 6,  tempMax: 12 },
+]);
+
+const COPENHAGEN: ForecastDay[] = withIcons([
+  { dateLabel: "Day 1",  weatherMain: "Clouds",  weatherDescription: "scattered clouds",    tempMin: 6,  tempMax: 12 },
+  { dateLabel: "Day 2",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",     tempMin: 6,  tempMax: 11 },
+  { dateLabel: "Day 3",  weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 5,  tempMax: 10 },
+  { dateLabel: "Day 4",  weatherMain: "Clouds",  weatherDescription: "broken clouds",       tempMin: 6,  tempMax: 12 },
+  { dateLabel: "Day 5",  weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 7,  tempMax: 15 },
+  { dateLabel: "Day 6",  weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 7,  tempMax: 16 },
+  { dateLabel: "Day 7",  weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 8,  tempMax: 16 },
+  { dateLabel: "Day 8",  weatherMain: "Clouds",  weatherDescription: "few clouds",          tempMin: 7,  tempMax: 14 },
+  { dateLabel: "Day 9",  weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 6,  tempMax: 11 },
+  { dateLabel: "Day 10", weatherMain: "Rain",    weatherDescription: "moderate rain",       tempMin: 6,  tempMax: 10 },
+  { dateLabel: "Day 11", weatherMain: "Clouds",  weatherDescription: "broken clouds",       tempMin: 6,  tempMax: 12 },
+  { dateLabel: "Day 12", weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 7,  tempMax: 15 },
+  { dateLabel: "Day 13", weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 8,  tempMax: 16 },
+  { dateLabel: "Day 14", weatherMain: "Clouds",  weatherDescription: "scattered clouds",    tempMin: 8,  tempMax: 15 },
+  { dateLabel: "Day 15", weatherMain: "Clouds",  weatherDescription: "few clouds",          tempMin: 7,  tempMax: 14 },
+  { dateLabel: "Day 16", weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 6,  tempMax: 11 },
+]);
   
   // ── Americas ─────────────────────────────────────────────────────────────────
   
@@ -394,24 +432,24 @@ export type ForecastDay = {
     { dateLabel: "Day 16", weatherMain: "Clear",   weatherDescription: "clear sky",          tempMin: 8,  tempMax: 18 },
   ]);
   
-  const VANCOUVER: ForecastDay[] = withIcons([
-    { dateLabel: "Day 1", weatherMain: "Clouds",  weatherDescription: "few clouds",    tempMin: 8,  tempMax: 15 },
-    { dateLabel: "Day 2", weatherMain: "Clear",    weatherDescription: "clear sky",         tempMin: 6,  tempMax: 15 },
-    { dateLabel: "Day 3", weatherMain: "Clouds",  weatherDescription: "overcast clouds",      tempMin: 6,  tempMax: 16 },
-    { dateLabel: "Day 4", weatherMain: "Clear",   weatherDescription: "overcast clouds",          tempMin: 5,  tempMax: 15 },
-    { dateLabel: "Day 5",  weatherMain: "Clear",   weatherDescription: "overcast clouds",          tempMin: 6,  tempMax: 12 },
-    { dateLabel: "Day 6",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",         tempMin: 7,  tempMax: 14 },
-    { dateLabel: "Day 7",  weatherMain: "Clear",    weatherDescription: "clear sky",      tempMin: 8,  tempMax: 19 },
-    { dateLabel: "Day 8",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",    tempMin: 7,  tempMax: 19 },
-    { dateLabel: "Day 9",  weatherMain: "Clear",   weatherDescription: "clear sky",          tempMin: 6,  tempMax: 16 },
-    { dateLabel: "Day 10",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",          tempMin: 7,  tempMax: 15 },
-    { dateLabel: "Day 11",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",   tempMin: 8,  tempMax: 11 },
-    { dateLabel: "Day 12",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",        tempMin: 8,  tempMax: 14 },
-    { dateLabel: "Day 13",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",  tempMin: 9,  tempMax: 15 },
-    { dateLabel: "Day 14", weatherMain: "Clouds",  weatherDescription: "overcast clouds",      tempMin: 8,  tempMax: 14 },
-    { dateLabel: "Day 15", weatherMain: "Clouds",  weatherDescription: "overcast clouds",          tempMin: 7,  tempMax: 12 },
-    { dateLabel: "Day 16", weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 8,  tempMax: 12 },
-  ]);
+const VANCOUVER: ForecastDay[] = withIcons([
+    { dateLabel: "Day 1",  weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 8,  tempMax: 14 },
+    { dateLabel: "Day 2",  weatherMain: "Rain",    weatherDescription: "moderate rain",       tempMin: 7,  tempMax: 12 },
+    { dateLabel: "Day 3",  weatherMain: "Clouds",  weatherDescription: "overcast clouds",     tempMin: 8,  tempMax: 13 },
+    { dateLabel: "Day 4",  weatherMain: "Clouds",  weatherDescription: "broken clouds",       tempMin: 9,  tempMax: 15 },
+    { dateLabel: "Day 5",  weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 8,  tempMax: 17 },
+    { dateLabel: "Day 6",  weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 9,  tempMax: 18 },
+    { dateLabel: "Day 7",  weatherMain: "Clouds",  weatherDescription: "scattered clouds",    tempMin: 10, tempMax: 16 },
+    { dateLabel: "Day 8",  weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 9,  tempMax: 13 },
+    { dateLabel: "Day 9",  weatherMain: "Rain",    weatherDescription: "moderate rain",       tempMin: 8,  tempMax: 12 },
+    { dateLabel: "Day 10", weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 8,  tempMax: 13 },
+    { dateLabel: "Day 11", weatherMain: "Clouds",  weatherDescription: "overcast clouds",     tempMin: 9,  tempMax: 14 },
+    { dateLabel: "Day 12", weatherMain: "Clouds",  weatherDescription: "few clouds",          tempMin: 10, tempMax: 16 },
+    { dateLabel: "Day 13", weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 10, tempMax: 18 },
+    { dateLabel: "Day 14", weatherMain: "Clouds",  weatherDescription: "scattered clouds",    tempMin: 10, tempMax: 17 },
+    { dateLabel: "Day 15", weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 9,  tempMax: 14 },
+    { dateLabel: "Day 16", weatherMain: "Rain",    weatherDescription: "moderate rain",       tempMin: 8,  tempMax: 13 },
+]);
 
   const SAO_PAULO: ForecastDay[] = withIcons([
     { dateLabel: "Day 1", weatherMain: "Rain",    weatherDescription: "moderate rain",      tempMin: 16, tempMax: 23 },
@@ -606,6 +644,25 @@ export type ForecastDay = {
     { dateLabel: "Day 15", weatherMain: "Clear",   weatherDescription: "clear sky",          tempMin: 9,  tempMax: 17 },
     { dateLabel: "Day 16", weatherMain: "Clouds",  weatherDescription: "scattered clouds",   tempMin: 10, tempMax: 16 },
   ]);
+
+  const MELBOURNE: ForecastDay[] = withIcons([
+    { dateLabel: "Day 1",  weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 11, tempMax: 20 },
+    { dateLabel: "Day 2",  weatherMain: "Clouds",  weatherDescription: "few clouds",          tempMin: 12, tempMax: 19 },
+    { dateLabel: "Day 3",  weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 11, tempMax: 16 },
+    { dateLabel: "Day 4",  weatherMain: "Rain",    weatherDescription: "moderate rain",       tempMin: 10, tempMax: 15 },
+    { dateLabel: "Day 5",  weatherMain: "Clouds",  weatherDescription: "broken clouds",       tempMin: 10, tempMax: 17 },
+    { dateLabel: "Day 6",  weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 11, tempMax: 21 },
+    { dateLabel: "Day 7",  weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 12, tempMax: 22 },
+    { dateLabel: "Day 8",  weatherMain: "Clouds",  weatherDescription: "scattered clouds",    tempMin: 12, tempMax: 20 },
+    { dateLabel: "Day 9",  weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 11, tempMax: 16 },
+    { dateLabel: "Day 10", weatherMain: "Clouds",  weatherDescription: "overcast clouds",     tempMin: 10, tempMax: 15 },
+    { dateLabel: "Day 11", weatherMain: "Clouds",  weatherDescription: "broken clouds",       tempMin: 10, tempMax: 17 },
+    { dateLabel: "Day 12", weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 11, tempMax: 20 },
+    { dateLabel: "Day 13", weatherMain: "Clear",   weatherDescription: "clear sky",           tempMin: 11, tempMax: 21 },
+    { dateLabel: "Day 14", weatherMain: "Clouds",  weatherDescription: "few clouds",          tempMin: 10, tempMax: 19 },
+    { dateLabel: "Day 15", weatherMain: "Rain",    weatherDescription: "light rain",          tempMin: 9,  tempMax: 15 },
+    { dateLabel: "Day 16", weatherMain: "Clouds",  weatherDescription: "overcast clouds",     tempMin: 9,  tempMax: 14 },
+]);
   
   const AUCKLAND: ForecastDay[] = withIcons([
     { dateLabel: "Day 1", weatherMain: "Rain",    weatherDescription: "light rain",         tempMin: 12, tempMax: 18 },
@@ -662,6 +719,8 @@ export type ForecastDay = {
     "kirkwall-gb":     KIRKWALL,
     "lerwick-gb":      LERWICK,
     "london-gb":       LONDON,
+    "aarhus-dk":       AARHUS,
+    "copenhagen-dk":   COPENHAGEN,
     "dublin-ie":       DUBLIN,
     "paris-fr":        PARIS,
     "berlin-de":       BERLIN,
@@ -681,6 +740,7 @@ export type ForecastDay = {
     "mumbai-in":       MUMBAI,
     "dubai-ae":        DUBAI,
     "sydney-au":       SYDNEY,
+    "melbourne-au":    MELBOURNE,
     "auckland-nz":     AUCKLAND,
     "mcmurdo-aq":      MCMURDO,
   };

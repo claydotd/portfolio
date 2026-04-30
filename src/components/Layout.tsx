@@ -21,12 +21,12 @@ export const Layout = ({ children }: LayoutProps) => {
             <NavLink to="/portfolio/about" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
               About me
             </NavLink>
-            <NavLink
+            {/* <NavLink
               to="/portfolio/music-practice-pal"
               className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
             >
               Music Practice Pal
-            </NavLink>
+            </NavLink> */}
             <NavLink
               to="/portfolio/weather-music"
               className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}

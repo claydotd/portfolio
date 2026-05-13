@@ -6,30 +6,35 @@ const BEAN_DATA_PLAN = [
     title: "Create a database of my coffee bean purchases",
     description:
       "I'll start by creating a database to store all the roasts purchased and their details.",
+    status: "done"
   },
   {
     id: 2,
     title: "Create an interface to add new purchases and add review notes",
     description:
       "Next, I want to dynamically add new roasts to the database and add review notes.",
+    status: "in progress"
   },
   {
     id: 3,
     title: "Create a dashboard to visualise the data",
     description:
       "After that, I'll be creating an overview dashboard to visualise the data. This will include filtering and dynamically updating visuals.",
+    status: "not started"
   },
   {
     id: 4,
     title: "Add interactive visualisations",
     description:
       "Once everything else is working, I want to add some more creative and interactive ways of visualising the data.",
+    status: "not started"
   },
   {
     id: 5,
     title: "Add a way to export the data",
     description:
       "At the end of the project, I want to add a way to export the data in a variety of formats so that others can access and use the data themselves.",
+    status: "not started"
   },
 ];
 
@@ -53,7 +58,7 @@ export const BeanData = () => {
           <ol>
             {BEAN_DATA_PLAN.map((beanDataPlan) => (
               <li key={beanDataPlan.id}>
-                <strong>{beanDataPlan.title}:</strong>{" "}
+                <span className="pill">{beanDataPlan.status}</span><strong>{beanDataPlan.title}:</strong>{" "}
                 {beanDataPlan.description}
               </li>
             ))}

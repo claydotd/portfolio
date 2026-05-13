@@ -10,7 +10,7 @@
         "datePurchased": "2026-04-21",
         "notes": ["Stonefruit", "Herbaceous", "Caramel", "Mango"],
         "reviews": [
-          { "method": "pourover", "rating": 5 },
+          { "method": "V60", "rating": 5 },
           { "method": "latte", "rating": 3 }
         ]
       },
@@ -22,7 +22,7 @@
         "datePurchased": "2026-05-15",
         "notes": ["Chocolate", "Hazelnut", "Caramel"],
         "reviews": [
-          { "method": "pourover", "rating": 4 },
+          { "method": "V60", "rating": 4 },
           { "method": "latte", "rating": 5 }
         ]
       },
@@ -32,9 +32,9 @@
         "name": "Red Brick",
         "origin": "Ethiopia",
         "datePurchased": "2026-03-10",
-        "notes": ["Jasmine", "Bergamot", "Lemon curd"],
+        "notes": ["Forest fruits", "Cherry", "Almond", "Fudge"],
         "reviews": [
-          { "method": "pourover", "rating": 5 },
+          { "method": "V60", "rating": 2 },
           { "method": "espresso", "rating": 4 }
         ]
       },
@@ -46,17 +46,17 @@
         "datePurchased": "2021-03-02",
         "notes": ["Cranberry", "Biscuit", "Honey"],
         "reviews": [
-          { "method": "pourover", "rating": 5 },
+          { "method": "V60", "rating": 5 },
           { "method": "aeropress", "rating": 4 }
         ]
       },
       {
         "id": 5,
-        "roaster": "Hasbean",
-        "name": "El Injerto Honey",
-        "origin": "Guatemala",
+        "roaster": "Rode & Grind",
+        "name": "Rocket Fuel",
+        "origin": "Blend",
         "datePurchased": "2026-02-14",
-        "notes": ["Peach", "Caramel", "Almond"],
+        "notes": ["Hazelnut", "Caramel", "Dark Chocolate"],
         "reviews": [
           { "method": "chemex", "rating": 4 },
           { "method": "latte", "rating": 4 }
@@ -64,38 +64,38 @@
       },
       {
         "id": 6,
-        "roaster": "Origin",
-        "name": "Gesha Village",
-        "origin": "Panama",
+        "roaster": "Unorthodox",
+        "name": "Ultimate Stoater",
+        "origin": "Brazil",
         "datePurchased": "2026-04-05",
-        "notes": ["Mango", "Passionfruit", "Rose"],
+        "notes": ["Banana", "Honey", "GoldenRaisin"],
         "reviews": [
-          { "method": "pourover", "rating": 5 },
+          { "method": "V60", "rating": 5 },
           { "method": "espresso", "rating": 5 }
         ]
       },
       {
         "id": 7,
-        "roaster": "Workshop",
-        "name": "Cerrado Natural",
+        "roaster": "Dear Green",
+        "name": "Fazenda Pantano",
         "origin": "Brazil",
-        "datePurchased": "2026-01-30",
-        "notes": ["Hazelnut", "Brown sugar", "Dried fig"],
+        "datePurchased": "2021-09-27",
+        "notes": ["Chocolate", "Caramel", "Peanut"],
         "reviews": [
-          { "method": "moka pot", "rating": 4 },
-          { "method": "latte", "rating": 5 }
+          { "method": "espresso", "rating": 5 },
+          { "method": "latte", "rating": 4 }
         ]
       },
       {
         "id": 8,
-        "roaster": "Monmouth",
-        "name": "Huila Castillo",
-        "origin": "Colombia",
-        "datePurchased": "2026-02-03",
-        "notes": ["Dark cherry", "Milk chocolate", "Walnut"],
+        "roaster": "Artisan Roast",
+        "name": "Santa Monica",
+        "origin": "Peru",
+        "datePurchased": "2022-05-18",
+        "notes": ["Orange", "Milk chocolate", "Dried Fruit"],
         "reviews": [
           { "method": "aeropress", "rating": 4 },
-          { "method": "latte", "rating": 4 }
+          { "method": "latte", "rating": 2 }
         ]
       },
       {
@@ -106,44 +106,44 @@
         "datePurchased": "2026-05-01",
         "notes": ["Raspberry", "Lime", "Honeysuckle"],
         "reviews": [
-          { "method": "pourover", "rating": 4 },
+          { "method": "V60", "rating": 4 },
           { "method": "espresso", "rating": 3 }
         ]
       },
       {
         "id": 10,
-        "roaster": "Unorthodox",
-        "name": "The Rebel",
+        "roaster": "Fortitude",
+        "name": "Worka Wuri",
         "origin": "Ethiopia",
         "datePurchased": "2026-04-10",
-        "notes": ["Blueberry", "Dark chocolate", "Clove"],
+        "notes": ["Peach", "Lemon", "Dried Fruit"],
         "reviews": [
           { "method": "espresso", "rating": 5 },
-          { "method": "latte", "rating": 5 }
+          { "method": "latte", "rating": 4 }
         ]
       },
       {
         "id": 11,
         "roaster": "Cairngorm",
-        "name": "Braw",
-        "origin": "Rwanda",
+        "name": "Sweetdrop",
+        "origin": "Brazil",
         "datePurchased": "2026-03-19",
-        "notes": ["Red apple", "Hibiscus", "Brown sugar"],
+        "notes": ["Dark Chocolate", "Brown Sugar", "Bold"],
         "reviews": [
-          { "method": "pourover", "rating": 4 },
+          { "method": "V60", "rating": 4 },
           { "method": "aeropress", "rating": 5 }
         ]
       },
       {
         "id": 12,
-        "roaster": "Fortitude",
-        "name": "Dawn Chorus",
-        "origin": "Costa Rica",
-        "datePurchased": "2026-05-08",
-        "notes": ["Orange zest", "Honey", "Vanilla"],
+        "roaster": "DAK",
+        "name": "Milky Cake",
+        "origin": "Colombia",
+        "datePurchased": "2025-05-27",
+        "notes": ["Cardamom", "Pistachio", "Vanilla cake"],
         "reviews": [
-          { "method": "chemex", "rating": 4 },
-          { "method": "latte", "rating": 4 }
+          { "method": "chemex", "rating": 2 },
+          { "method": "latte", "rating": 5 }
         ]
       }
     ]

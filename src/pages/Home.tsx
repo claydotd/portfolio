@@ -14,7 +14,7 @@ export const Home = () => {
           Hi, I&apos;m <span className="accent">Clay</span>.
         </h1>
         <p className="subtitle">
-          I&apos;m an aspiring<span className="accent">front-end developer</span> and this portfolio is where I experiment
+          I&apos;m an aspiring <span className="accent">front-end developer</span> and this portfolio is where I experiment
           with React, TypeScript, and modern UI practices.
         </p>
         <div className="hero-actions">

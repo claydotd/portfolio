@@ -43,12 +43,13 @@ export const About = () => {
           <h2>Skills</h2>
           <ul className="pill-list">
             <li className="pill">HTML &amp; CSS</li>
-            <li className="pill">JavaScript</li>
-            <li className="pill">React</li>
             <li className="pill">TypeScript</li>
+            <li className="pill">React</li>
+            <li className="pill">CSS</li>
             <li className="pill">SQL</li>
             <li className="pill">Curriculum Development</li>
             <li className="pill">Educational Design</li>
+            <li className="pill">Music Production</li>
             <li className="pill">Graphic Design</li>
           </ul>
           <div className="skills-cta">

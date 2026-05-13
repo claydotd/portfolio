@@ -1,0 +1,150 @@
+{
+    "title": "Bean Database",
+    "description": "A database of my coffee bean purchases",
+    "entries": [
+      {
+        "id": 1,
+        "roaster": "Spaceboy",
+        "name": "Wilder Garcia",
+        "origin": "Peru",
+        "datePurchased": "2026-04-21",
+        "notes": ["Stonefruit", "Herbaceous", "Caramel", "Mango"],
+        "reviews": [
+          { "method": "pourover", "rating": 5 },
+          { "method": "latte", "rating": 3 }
+        ]
+      },
+      {
+        "id": 2,
+        "roaster": "Unorthodox",
+        "name": "Wee Stoater",
+        "origin": "Brazil",
+        "datePurchased": "2026-05-15",
+        "notes": ["Chocolate", "Hazelnut", "Caramel"],
+        "reviews": [
+          { "method": "pourover", "rating": 4 },
+          { "method": "latte", "rating": 5 }
+        ]
+      },
+      {
+        "id": 3,
+        "roaster": "Square Mile",
+        "name": "Red Brick",
+        "origin": "Ethiopia",
+        "datePurchased": "2026-03-10",
+        "notes": ["Jasmine", "Bergamot", "Lemon curd"],
+        "reviews": [
+          { "method": "pourover", "rating": 5 },
+          { "method": "espresso", "rating": 4 }
+        ]
+      },
+      {
+        "id": 4,
+        "roaster": "Hej",
+        "name": "Caffe Queero",
+        "origin": "Colombia",
+        "datePurchased": "2021-03-02",
+        "notes": ["Cranberry", "Biscuit", "Honey"],
+        "reviews": [
+          { "method": "pourover", "rating": 5 },
+          { "method": "aeropress", "rating": 4 }
+        ]
+      },
+      {
+        "id": 5,
+        "roaster": "Hasbean",
+        "name": "El Injerto Honey",
+        "origin": "Guatemala",
+        "datePurchased": "2026-02-14",
+        "notes": ["Peach", "Caramel", "Almond"],
+        "reviews": [
+          { "method": "chemex", "rating": 4 },
+          { "method": "latte", "rating": 4 }
+        ]
+      },
+      {
+        "id": 6,
+        "roaster": "Origin",
+        "name": "Gesha Village",
+        "origin": "Panama",
+        "datePurchased": "2026-04-05",
+        "notes": ["Mango", "Passionfruit", "Rose"],
+        "reviews": [
+          { "method": "pourover", "rating": 5 },
+          { "method": "espresso", "rating": 5 }
+        ]
+      },
+      {
+        "id": 7,
+        "roaster": "Workshop",
+        "name": "Cerrado Natural",
+        "origin": "Brazil",
+        "datePurchased": "2026-01-30",
+        "notes": ["Hazelnut", "Brown sugar", "Dried fig"],
+        "reviews": [
+          { "method": "moka pot", "rating": 4 },
+          { "method": "latte", "rating": 5 }
+        ]
+      },
+      {
+        "id": 8,
+        "roaster": "Monmouth",
+        "name": "Huila Castillo",
+        "origin": "Colombia",
+        "datePurchased": "2026-02-03",
+        "notes": ["Dark cherry", "Milk chocolate", "Walnut"],
+        "reviews": [
+          { "method": "aeropress", "rating": 4 },
+          { "method": "latte", "rating": 4 }
+        ]
+      },
+      {
+        "id": 9,
+        "roaster": "Spaceboy",
+        "name": "Cosmic Drift",
+        "origin": "Colombia",
+        "datePurchased": "2026-05-01",
+        "notes": ["Raspberry", "Lime", "Honeysuckle"],
+        "reviews": [
+          { "method": "pourover", "rating": 4 },
+          { "method": "espresso", "rating": 3 }
+        ]
+      },
+      {
+        "id": 10,
+        "roaster": "Unorthodox",
+        "name": "The Rebel",
+        "origin": "Ethiopia",
+        "datePurchased": "2026-04-10",
+        "notes": ["Blueberry", "Dark chocolate", "Clove"],
+        "reviews": [
+          { "method": "espresso", "rating": 5 },
+          { "method": "latte", "rating": 5 }
+        ]
+      },
+      {
+        "id": 11,
+        "roaster": "Cairngorm",
+        "name": "Braw",
+        "origin": "Rwanda",
+        "datePurchased": "2026-03-19",
+        "notes": ["Red apple", "Hibiscus", "Brown sugar"],
+        "reviews": [
+          { "method": "pourover", "rating": 4 },
+          { "method": "aeropress", "rating": 5 }
+        ]
+      },
+      {
+        "id": 12,
+        "roaster": "Fortitude",
+        "name": "Dawn Chorus",
+        "origin": "Costa Rica",
+        "datePurchased": "2026-05-08",
+        "notes": ["Orange zest", "Honey", "Vanilla"],
+        "reviews": [
+          { "method": "chemex", "rating": 4 },
+          { "method": "latte", "rating": 4 }
+        ]
+      }
+    ]
+  }

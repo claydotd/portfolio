@@ -917,7 +917,7 @@ useEffect(() => {
         <p className="subtitle">
           A 16-step sequencer where the sound and note for each step is set by one day of weather data. Use your location or choose a location, then see what the forecast sounds like!
         </p>
-        <p> Please note that the OpenWeatherMap API doesn't currently work at the minute because I don't have a subscription to make 16-day forecast calls... Please enjoy playing around with my set of example forecasts though!</p>
+        <p> Please note that the 16-day forecast OpenWeatherMap API doesn't currently work at the minute because I don't have a subscription... Please enjoy playing around with the 8-day forecast though!</p>
       </header>
 
       <section className="section weather-music-panel">

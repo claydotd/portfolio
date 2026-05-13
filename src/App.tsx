@@ -3,7 +3,7 @@ import { Layout } from "./components/Layout";
 import { Home } from "./pages/Home";
 import { About } from "./pages/About";
 import { WeatherMusic } from "./pages/WeatherMusic";
-import { BeanData } from "./pages/applets/BeanData";
+import { BeanData } from "./pages/BeanData";
 // import { MusicPracticePal } from "./pages/MusicPracticePal";
 // import { KeyToKeySignatures } from "./pages/applets/KeyToKeySignatures";
 // import { IntervalInspector } from "./pages/applets/IntervalInspector";

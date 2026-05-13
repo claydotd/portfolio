@@ -14,7 +14,7 @@ export const Home = () => {
           Hi, I&apos;m <span className="accent">Clay</span>.
         </h1>
         <p className="subtitle">
-          I&apos;m an <span className="accent">educational developer</span> and this portfolio is where I experiment
+          I&apos;m an aspiring<span className="accent">front-end developer</span> and this portfolio is where I experiment
           with React, TypeScript, and modern UI practices.
         </p>
         <div className="hero-actions">
@@ -28,21 +28,21 @@ export const Home = () => {
       </div>
 
       <section id="projects" className="section">
-        <h2>Featured project</h2>
-        <p className="section-subtitle">Here's just one project that I'm proud of! More coming soon...</p>
+        <h2>Featured projects</h2>
+        <p className="section-subtitle">Here are a couple of projects that I'm proud of! More coming soon...</p>
         <div className="card-grid">
           <Link to="/portfolio/weather-music" className="card card-link">
             <h3>Weather Music</h3>
             <p>
               A step-sequenced synth, bass, and drum sequencer that uses the weather to determine the notes and sounds.
-              I used <span className="accent">tone.js</span> and <span className="accent">OpenWeatherMap</span> to create this fun little instrument.
+              I used <span className="accent">tone.js</span> and <span className="accent">OpenWeatherMap</span> to create this fun wee instrument.
             </p>
             <span className="pill">View project</span>
           </Link>
           <Link to="/portfolio/bean-data" className="card card-link">
             <h3>Bean Data</h3>
             <p>
-              A project to visualise data from my coffee bean purchases. I'm using this project to experiment with data visualisation.
+              Coffee is my <span style={{ fontStyle: "italic" }}>uisge beatha</span>. This is a project to visualise data from my coffee bean purchases. I'm using this project to experiment with data visualisation.
             </p>
             <span className="pill">View project</span>
           </Link>

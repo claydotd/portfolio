@@ -119,16 +119,6 @@ const findNearestLocation = (lat: number, lon: number): LocationOption => {
 const formatLocationLabel = (location: LocationOption) =>
   location.countryName ? `${location.name}, ${location.countryName}` : location.name;
 
-const mapWeatherToScaleDegree = (condition: string): number => {
-  const normalized = condition.toLowerCase();
-  if (normalized.includes("thunder")) return 6;
-  if (normalized.includes("rain") || normalized.includes("drizzle")) return 5;
-  if (normalized.includes("snow")) return 2;
-  if (normalized.includes("cloud")) return 4;
-  if (normalized.includes("mist") || normalized.includes("fog")) return 1;
-  if (normalized.includes("clear")) return 0;
-  return 3;
-};
 
 const toDateLabel = (unixSeconds: number): string => {
   const date = new Date(unixSeconds * 1000);
@@ -204,7 +194,14 @@ const DEFAULT_BASS_GROUPS: BassGroup[] = Array.from({ length: 16 }, (_, i) => {
 });
 
 const OPENWEATHER_API_KEY = weather_api_key;
+
+// API mode toggle
+// "onecall" → One Call API 3.0 (8-day forecast, doubled to fill 16 steps).
+// "daily"   → Legacy 16-day forecast endpoint (requires a paid plan)
+const FORECAST_API_MODE: "onecall" | "daily" = "onecall";
+
 const OPENWEATHER_DAILY_ENDPOINT = "https://api.openweathermap.org/data/2.5/forecast/daily";
+const OPENWEATHER_ONECALL_ENDPOINT = "https://api.openweathermap.org/data/3.0/onecall";
 const FORECAST_STEP_COUNT = 16;
 const FETCH_TIMEOUT_MS = 12000;
 
@@ -212,6 +209,14 @@ type OpenWeatherDailyResponse = {
   cod?: string;
   message?: string | number;
   list?: Array<{
+    dt: number;
+    temp: { min: number; max: number };
+    weather: Array<{ main: string; description: string }>;
+  }>;
+};
+
+type OpenWeatherOneCallResponse = {
+  daily?: Array<{
     dt: number;
     temp: { min: number; max: number };
     weather: Array<{ main: string; description: string }>;
@@ -244,8 +249,36 @@ const parseForecastDays = (data: OpenWeatherDailyResponse): ForecastDay[] => {
   ].slice(0, FORECAST_STEP_COUNT);
 };
 
-// Weather → synth parameter helpers
+// Parses One Call 3.0 response: up to 8 daily entries, doubled to fill 16 steps.
+const parseOneCallForecastDays = (data: OpenWeatherOneCallResponse): ForecastDay[] => {
+  const raw: ForecastDay[] =
+    data.daily?.slice(0, 8).map((day) => ({
+      dateLabel: toDateLabel(day.dt),
+      weatherMain: day.weather[0]?.main ?? "Unknown",
+      weatherDescription: day.weather[0]?.description ?? "n/a",
+      tempMin: day.temp.min,
+      tempMax: day.temp.max,
+      weatherIcon: weatherIconForCondition(day.weather[0]?.main ?? ""),
+    })) ?? [];
 
+  if (raw.length === 0) throw new Error("No forecast data returned from One Call API.");
+
+  // Double the 8-day forecast to fill all 16 sequencer steps.
+  const doubled = [...raw, ...raw].slice(0, FORECAST_STEP_COUNT);
+  return doubled;
+};
+
+// Weather → synth parameters
+const mapWeatherToScaleDegree = (condition: string): number => {
+  const normalized = condition.toLowerCase();
+  if (normalized.includes("thunder")) return 6;
+  if (normalized.includes("rain") || normalized.includes("drizzle")) return 5;
+  if (normalized.includes("snow")) return 2;
+  if (normalized.includes("cloud")) return 4;
+  if (normalized.includes("mist") || normalized.includes("fog")) return 1;
+  if (normalized.includes("clear")) return 0;
+  return 3;
+};
 // avgTemp: freq high when warm, low when cold
 const tempToFilterCutoff = (avgTemp: number): number => {
   const clamped = Math.max(-10, Math.min(40, avgTemp));
@@ -259,6 +292,7 @@ const tempToRelease = (tempMax: number): number => {
   return parseFloat((0.1 + t * 1.0).toFixed(2));
 };
 
+// legacy function, for changing distortion amount with each step
 const descriptionToDistortion = (description: string): number => {
   // const d = description.toLowerCase();
   // if (d.includes("thunder") || d.includes("storm"))    return 0.05;
@@ -449,11 +483,7 @@ export const WeatherMusic = () => {
 
   }, []);
 
-// CHANGED: Drum synth setup — more professional sounds
-// Kick: tighter punch with a short sub tail
-// Snare: layered noise + tonal transient (snareToneRef) for crack and body
-// Hi-hat: tighter, higher pitched, less metallic ringing
-// Clap: pink noise with slightly longer decay for more body
+// Drum synth setup
 useEffect(() => {
   const kickSynth = new Tone.MembraneSynth({
     pitchDecay: 0.04,
@@ -745,22 +775,45 @@ useEffect(() => {
     setIsFetchingWeather(true);
     setStatusMessage(`Loading forecast for ${formatLocationLabel(selectedLocation)}...`);
     try {
-      const params = new URLSearchParams({
-        lat: String(selectedLocation.lat),
-        lon: String(selectedLocation.lon),
-        cnt: String(FORECAST_STEP_COUNT),
-        units: "metric",
-        appid: OPENWEATHER_API_KEY,
-      });
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-      const response = await fetch(`${OPENWEATHER_DAILY_ENDPOINT}?${params.toString()}`, { signal: controller.signal });
-      window.clearTimeout(timeoutId);
-      if (!response.ok) throw new Error(`Forecast request failed (${response.status})`);
-      const data = (await response.json()) as OpenWeatherDailyResponse;
-      if (data.cod && data.cod !== "200") throw new Error(`OpenWeather error: ${String(data.message ?? data.cod)}`);
-      setForecast(parseForecastDays(data));
-      setStatusMessage(`Loaded 16-day forecast for ${formatLocationLabel(selectedLocation)}.`);
+
+      let days: ForecastDay[];
+
+      if (FORECAST_API_MODE === "onecall") {
+        // ── One Call API 3.0 ─────────────────────────────────────────────
+        const params = new URLSearchParams({
+          lat: String(selectedLocation.lat),
+          lon: String(selectedLocation.lon),
+          exclude: "current,minutely,hourly,alerts",
+          units: "metric",
+          appid: OPENWEATHER_API_KEY,
+        });
+        const response = await fetch(`${OPENWEATHER_ONECALL_ENDPOINT}?${params.toString()}`, { signal: controller.signal });
+        window.clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`Forecast request failed (${response.status})`);
+        const data = (await response.json()) as OpenWeatherOneCallResponse;
+        days = parseOneCallForecastDays(data);
+        setStatusMessage(`Loaded 8-day forecast (×2) for ${formatLocationLabel(selectedLocation)}.`);
+      } else {
+        // ── Legacy 16-day daily endpoint ─────────────────────────────────
+        const params = new URLSearchParams({
+          lat: String(selectedLocation.lat),
+          lon: String(selectedLocation.lon),
+          cnt: String(FORECAST_STEP_COUNT),
+          units: "metric",
+          appid: OPENWEATHER_API_KEY,
+        });
+        const response = await fetch(`${OPENWEATHER_DAILY_ENDPOINT}?${params.toString()}`, { signal: controller.signal });
+        window.clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`Forecast request failed (${response.status})`);
+        const data = (await response.json()) as OpenWeatherDailyResponse;
+        if (data.cod && data.cod !== "200") throw new Error(`OpenWeather error: ${String(data.message ?? data.cod)}`);
+        days = parseForecastDays(data);
+        setStatusMessage(`Loaded 16-day forecast for ${formatLocationLabel(selectedLocation)}.`);
+      }
+
+      setForecast(days);
     } catch (error) {
       console.error(error);
       setForecast(getFallbackForecast(selectedLocation.id));const nearest = findNearestLocation(

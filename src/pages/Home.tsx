@@ -39,6 +39,13 @@ export const Home = () => {
             </p>
             <span className="pill">View project</span>
           </Link>
+          <Link to="/portfolio/bean-data" className="card card-link">
+            <h3>Bean Data</h3>
+            <p>
+              A project to visualise data from my coffee bean purchases. I'm using this project to experiment with data visualisation.
+            </p>
+            <span className="pill">View project</span>
+          </Link>
           {/* <Link to="/portfolio/music-practice-pal" className="card card-link">
             <h3>Music Practice Pal</h3>
             <p>

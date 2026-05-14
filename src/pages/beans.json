@@ -1,114 +1,206 @@
 {
-    "title": "Bean Database",
-    "description": "A database of my coffee bean purchases",
-    "entries": [
-      {
-        "id": 1,
-        "roaster": "Spaceboy",
-        "name": "Wilder Garcia",
-        "origin": "Peru",
-        "datePurchased": "2026-04-21",
-        "notes": ["Stonefruit", "Herbaceous", "Caramel", "Mango"],
-        "greatOn": ["pourover", "espresso"]
-      },
-      {
-        "id": 2,
-        "roaster": "Unorthodox",
-        "name": "Wee Stoater",
-        "origin": "Brazil",
-        "datePurchased": "2026-05-15",
-        "notes": ["Chocolate", "Hazelnut", "Caramel"],
-        "greatOn": ["pourover", "latte", "aeropress"]
-      },
-      {
-        "id": 3,
-        "roaster": "Square Mile",
-        "name": "Red Brick",
-        "origin": "Ethiopia",
-        "datePurchased": "2026-03-10",
-        "notes": ["Forest fruits", "Cherry", "Almond", "Fudge"],
-        "greatOn": ["espresso"]
-      },
-      {
-        "id": 4,
-        "roaster": "Hej",
-        "name": "Caffe Queero",
-        "origin": "Colombia",
-        "datePurchased": "2021-03-02",
-        "notes": ["Cranberry", "Biscuit", "Honey"],
-        "greatOn": ["pourover", "aeropress"]
-      },
-      {
-        "id": 5,
-        "roaster": "Rode & Grind",
-        "name": "Rocket Fuel",
-        "origin": "Blend",
-        "datePurchased": "2026-02-14",
-        "notes": ["Hazelnut", "Caramel", "Dark Chocolate"],
-        "greatOn": ["pourover", "latte"]
-      },
-      {
-        "id": 6,
-        "roaster": "Unorthodox",
-        "name": "Ultimate Stoater",
-        "origin": "Brazil",
-        "datePurchased": "2026-04-05",
-        "notes": ["Banana", "Honey", "Golden Raisin"],
-        "greatOn": ["pourover", "latte", "espresso"]
-      },
-      {
-        "id": 7,
-        "roaster": "Dear Green",
-        "name": "Fazenda Pantano",
-        "origin": "Brazil",
-        "datePurchased": "2021-09-27",
-        "notes": ["Chocolate", "Caramel", "Peanut"],
-        "greatOn": ["espresso", "latte"]
-      },
-      {
-        "id": 8,
-        "roaster": "Artisan Roast",
-        "name": "Santa Monica",
-        "origin": "Peru",
-        "datePurchased": "2022-05-18",
-        "notes": ["Orange", "Milk chocolate", "Dried Fruit"],
-        "greatOn": ["aeropress"]
-      },
-      {
-        "id": 9,
-        "roaster": "Spaceboy",
-        "name": "Cosmic Drift",
-        "origin": "Colombia",
-        "datePurchased": "2026-05-01",
-        "notes": ["Raspberry", "Lime", "Honeysuckle"],
-        "greatOn": ["pourover"]
-      },
-      {
-        "id": 10,
-        "roaster": "Fortitude",
-        "name": "Worka Wuri",
-        "origin": "Ethiopia",
-        "datePurchased": "2026-04-10",
-        "notes": ["Peach", "Lemon", "Dried Fruit"],
-        "greatOn": ["espresso", "latte"]
-      },
-      {
-        "id": 11,
-        "roaster": "Cairngorm",
-        "name": "Sweetdrop",
-        "origin": "Brazil",
-        "datePurchased": "2026-03-19",
-        "notes": ["Dark Chocolate", "Brown Sugar", "Bold"],
-        "greatOn": ["pourover", "aeropress", "latte"]
-      },
-      {
-        "id": 12,
-        "roaster": "DAK",
-        "name": "Milky Cake",
-        "origin": "Colombia",
-        "datePurchased": "2025-05-27",
-        "notes": ["Cardamom", "Pistachio", "Vanilla cake"],
-        "greatOn": ["latte"]
-      }
-    ]
-  }
+  "entries": [
+    {
+      "id": 1,
+      "roaster": "Spaceboy",
+      "name": "Wilder Garcia",
+      "origin": "Peru",
+      "datePurchased": "2026-04-21",
+      "notes": [
+        "Stonefruit",
+        "Herbaceous",
+        "Caramel",
+        "Mango"
+      ],
+      "greatOn": [
+        "pourover",
+        "espresso"
+      ]
+    },
+    {
+      "id": 2,
+      "roaster": "Unorthodox",
+      "name": "Wee Stoater",
+      "origin": "Brazil",
+      "datePurchased": "2026-05-15",
+      "notes": [
+        "Chocolate",
+        "Hazelnut",
+        "Caramel"
+      ],
+      "greatOn": [
+        "pourover",
+        "latte",
+        "aeropress"
+      ]
+    },
+    {
+      "id": 3,
+      "roaster": "Square Mile",
+      "name": "Red Brick",
+      "origin": "Ethiopia",
+      "datePurchased": "2026-03-10",
+      "notes": [
+        "Forest fruits",
+        "Cherry",
+        "Almond",
+        "Fudge"
+      ],
+      "greatOn": [
+        "espresso"
+      ]
+    },
+    {
+      "id": 4,
+      "roaster": "Hej",
+      "name": "Caffe Queero",
+      "origin": "Colombia",
+      "datePurchased": "2021-03-02",
+      "notes": [
+        "Cranberry",
+        "Biscuit",
+        "Honey"
+      ],
+      "greatOn": [
+        "pourover",
+        "aeropress"
+      ]
+    },
+    {
+      "id": 5,
+      "roaster": "Rode & Grind",
+      "name": "Rocket Fuel",
+      "origin": "Blend",
+      "datePurchased": "2026-02-14",
+      "notes": [
+        "Hazelnut",
+        "Caramel",
+        "Dark Chocolate"
+      ],
+      "greatOn": [
+        "pourover",
+        "latte"
+      ]
+    },
+    {
+      "id": 6,
+      "roaster": "Unorthodox",
+      "name": "Ultimate Stoater",
+      "origin": "Brazil",
+      "datePurchased": "2026-04-05",
+      "notes": [
+        "Banana",
+        "Honey",
+        "Golden Raisin"
+      ],
+      "greatOn": [
+        "pourover",
+        "latte",
+        "espresso"
+      ]
+    },
+    {
+      "id": 7,
+      "roaster": "Dear Green",
+      "name": "Fazenda Pantano",
+      "origin": "Brazil",
+      "datePurchased": "2021-09-27",
+      "notes": [
+        "Chocolate",
+        "Caramel",
+        "Peanut"
+      ],
+      "greatOn": [
+        "espresso",
+        "latte"
+      ]
+    },
+    {
+      "id": 8,
+      "roaster": "Artisan Roast",
+      "name": "Santa Monica",
+      "origin": "Peru",
+      "datePurchased": "2022-05-18",
+      "notes": [
+        "Orange",
+        "Milk chocolate",
+        "Dried Fruit"
+      ],
+      "greatOn": [
+        "aeropress"
+      ]
+    },
+    {
+      "id": 9,
+      "roaster": "Spaceboy",
+      "name": "Cosmic Drift",
+      "origin": "Colombia",
+      "datePurchased": "2026-05-01",
+      "notes": [
+        "Raspberry",
+        "Lime",
+        "Honeysuckle"
+      ],
+      "greatOn": [
+        "pourover"
+      ]
+    },
+    {
+      "id": 10,
+      "roaster": "Fortitude",
+      "name": "Worka Wuri",
+      "origin": "Ethiopia",
+      "datePurchased": "2026-04-10",
+      "notes": [
+        "Peach",
+        "Lemon",
+        "Dried Fruit"
+      ],
+      "greatOn": [
+        "espresso",
+        "latte"
+      ]
+    },
+    {
+      "id": 11,
+      "roaster": "Cairngorm",
+      "name": "Sweetdrop",
+      "origin": "Brazil",
+      "datePurchased": "2026-03-19",
+      "notes": [
+        "Dark Chocolate",
+        "Brown Sugar",
+        "Bold"
+      ],
+      "greatOn": [
+        "pourover",
+        "aeropress",
+        "latte"
+      ]
+    },
+    {
+      "id": 12,
+      "roaster": "DAK",
+      "name": "Milky Cake",
+      "origin": "Colombia",
+      "datePurchased": "2025-05-27",
+      "notes": [
+        "Cardamom",
+        "Pistachio",
+        "Vanilla cake"
+      ],
+      "greatOn": [
+        "latte"
+      ]
+    },
+    {
+      "id": 13,
+      "roaster": "Testing",
+      "name": "Testing1",
+      "origin": "",
+      "datePurchased": "",
+      "notes": [],
+      "greatOn": []
+    }
+  ]
+}

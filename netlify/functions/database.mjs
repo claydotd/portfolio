@@ -1,5 +1,35 @@
 import { getDatabase } from "@netlify/database";
 
+/**
+ * Netlify Database injects a Postgres URL as NETLIFY_DB_URL for server-side code.
+ * In Lambda compatibility mode, that value is often on process.env only; @netlify/runtime-utils
+ * reads Netlify.env first, which can omit it — so we pass the connection string explicitly
+ * when we find a postgres URL on process.env. See https://ntl.fyi/database-environment
+ */
+function postgresUrlFromProcessEnv() {
+  if (typeof process === "undefined" || !process.env) return undefined;
+  const candidates = [
+    process.env.NETLIFY_DB_URL,
+    process.env.NETLIFY_DATABASE_URL,
+    process.env.DATABASE_URL,
+  ];
+  for (const c of candidates) {
+    if (
+      typeof c === "string" &&
+      (c.startsWith("postgres://") || c.startsWith("postgresql://"))
+    ) {
+      return c;
+    }
+  }
+  return undefined;
+}
+
+function connectDatabase() {
+  const url = postgresUrlFromProcessEnv();
+  if (url) return getDatabase({ connectionString: url });
+  return getDatabase();
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
@@ -58,7 +88,7 @@ export const handler = async (event) => {
 
   let db;
   try {
-    db = getDatabase();
+    db = connectDatabase();
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Database unavailable";
     return json(503, { message: msg });

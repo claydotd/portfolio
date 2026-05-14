@@ -9,10 +9,7 @@
         "origin": "Peru",
         "datePurchased": "2026-04-21",
         "notes": ["Stonefruit", "Herbaceous", "Caramel", "Mango"],
-        "reviews": [
-          { "method": "V60", "rating": 5 },
-          { "method": "latte", "rating": 3 }
-        ]
+        "greatOn": ["pourover", "espresso"]
       },
       {
         "id": 2,
@@ -21,10 +18,7 @@
         "origin": "Brazil",
         "datePurchased": "2026-05-15",
         "notes": ["Chocolate", "Hazelnut", "Caramel"],
-        "reviews": [
-          { "method": "V60", "rating": 4 },
-          { "method": "latte", "rating": 5 }
-        ]
+        "greatOn": ["pourover", "latte", "aeropress"]
       },
       {
         "id": 3,
@@ -33,10 +27,7 @@
         "origin": "Ethiopia",
         "datePurchased": "2026-03-10",
         "notes": ["Forest fruits", "Cherry", "Almond", "Fudge"],
-        "reviews": [
-          { "method": "V60", "rating": 2 },
-          { "method": "espresso", "rating": 4 }
-        ]
+        "greatOn": ["espresso"]
       },
       {
         "id": 4,
@@ -45,10 +36,7 @@
         "origin": "Colombia",
         "datePurchased": "2021-03-02",
         "notes": ["Cranberry", "Biscuit", "Honey"],
-        "reviews": [
-          { "method": "V60", "rating": 5 },
-          { "method": "aeropress", "rating": 4 }
-        ]
+        "greatOn": ["pourover", "aeropress"]
       },
       {
         "id": 5,
@@ -57,10 +45,7 @@
         "origin": "Blend",
         "datePurchased": "2026-02-14",
         "notes": ["Hazelnut", "Caramel", "Dark Chocolate"],
-        "reviews": [
-          { "method": "chemex", "rating": 4 },
-          { "method": "latte", "rating": 4 }
-        ]
+        "greatOn": ["pourover", "latte"]
       },
       {
         "id": 6,
@@ -68,11 +53,8 @@
         "name": "Ultimate Stoater",
         "origin": "Brazil",
         "datePurchased": "2026-04-05",
-        "notes": ["Banana", "Honey", "GoldenRaisin"],
-        "reviews": [
-          { "method": "V60", "rating": 5 },
-          { "method": "espresso", "rating": 5 }
-        ]
+        "notes": ["Banana", "Honey", "Golden Raisin"],
+        "greatOn": ["pourover", "latte", "espresso"]
       },
       {
         "id": 7,
@@ -81,10 +63,7 @@
         "origin": "Brazil",
         "datePurchased": "2021-09-27",
         "notes": ["Chocolate", "Caramel", "Peanut"],
-        "reviews": [
-          { "method": "espresso", "rating": 5 },
-          { "method": "latte", "rating": 4 }
-        ]
+        "greatOn": ["espresso", "latte"]
       },
       {
         "id": 8,
@@ -93,10 +72,7 @@
         "origin": "Peru",
         "datePurchased": "2022-05-18",
         "notes": ["Orange", "Milk chocolate", "Dried Fruit"],
-        "reviews": [
-          { "method": "aeropress", "rating": 4 },
-          { "method": "latte", "rating": 2 }
-        ]
+        "greatOn": ["aeropress"]
       },
       {
         "id": 9,
@@ -105,10 +81,7 @@
         "origin": "Colombia",
         "datePurchased": "2026-05-01",
         "notes": ["Raspberry", "Lime", "Honeysuckle"],
-        "reviews": [
-          { "method": "V60", "rating": 4 },
-          { "method": "espresso", "rating": 3 }
-        ]
+        "greatOn": ["pourover"]
       },
       {
         "id": 10,
@@ -117,10 +90,7 @@
         "origin": "Ethiopia",
         "datePurchased": "2026-04-10",
         "notes": ["Peach", "Lemon", "Dried Fruit"],
-        "reviews": [
-          { "method": "espresso", "rating": 5 },
-          { "method": "latte", "rating": 4 }
-        ]
+        "greatOn": ["espresso", "latte"]
       },
       {
         "id": 11,
@@ -129,10 +99,7 @@
         "origin": "Brazil",
         "datePurchased": "2026-03-19",
         "notes": ["Dark Chocolate", "Brown Sugar", "Bold"],
-        "reviews": [
-          { "method": "V60", "rating": 4 },
-          { "method": "aeropress", "rating": 5 }
-        ]
+        "greatOn": ["pourover", "aeropress", "latte"]
       },
       {
         "id": 12,
@@ -141,10 +108,7 @@
         "origin": "Colombia",
         "datePurchased": "2025-05-27",
         "notes": ["Cardamom", "Pistachio", "Vanilla cake"],
-        "reviews": [
-          { "method": "chemex", "rating": 2 },
-          { "method": "latte", "rating": 5 }
-        ]
+        "greatOn": ["latte"]
       }
     ]
   }

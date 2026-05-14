@@ -432,6 +432,62 @@ h2 {
   background: var(--pink-soft);
   color: var(--ink);
 }
+
+/* ── BeanData: Add button ───────────────────────────────── */
+.btn-add {
+  background: linear-gradient(135deg, var(--yellow) 0%, #ffe066 100%);
+  color: #2b1f00;
+  border-color: rgba(255,216,77,.35);
+  box-shadow: 0 6px 18px var(--yellow-soft);
+}
+
+.btn-add:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px var(--yellow-glow);
+}
+
+/* ── BeanData: Edit button ──────────────────────────────── */
+.btn-edit {
+  background: transparent;
+  border: 1px solid var(--border-warm);
+  color: var(--ink-muted);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  border-radius: var(--radius-pill);
+}
+
+.btn-edit:hover {
+  border-color: var(--yellow);
+  background: var(--yellow-soft);
+  color: var(--ink);
+}
+
+/* ── BeanData: Cancel button ────────────────────────────── */
+.btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
+}
+
+.btn-cancel:hover {
+  border-color: var(--pink-deep);
+  background: var(--pink-soft);
+  color: var(--ink);
+}
+
+/* ── BeanData: Submit button ────────────────────────────── */
+.btn-submit {
+  background: linear-gradient(135deg, var(--yellow) 0%, #ffe066 100%);
+  color: #2b1f00;
+  border-color: rgba(255,216,77,.35);
+  box-shadow: 0 6px 18px var(--yellow-soft);
+}
+
+.btn-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px var(--yellow-glow);
+}
+
 /* ── Section cards ────────────────────────────────────────── */
 .section {
   margin-top: 2.5rem;
@@ -1367,6 +1423,178 @@ h2 {
 .app-footer p {
   border-top: 1px solid var(--border);
   padding-top: 0.8rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BEAN DATA — table, toolbar, overlay form
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Table toolbar ──────────────────────────────────────── */
+.table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Bean overlay (reuses .modal-overlay backdrop pattern) ── */
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(44,35,24,.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1.25rem;
+  animation: beanFadeIn 0.15s ease;
+}
+
+@keyframes beanFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.overlay-panel {
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  border-radius: var(--radius-lg);
+  background: #fff;
+  background-image: radial-gradient(ellipse 70% 60% at -10% -10%, rgba(242,184,198,.3), transparent 55%);
+  border: 1px solid var(--border-warm);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  animation: beanSlideUp 0.2s ease;
+}
+
+@keyframes beanSlideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.overlay-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--ink);
+}
+
+/* Close button reuses .modal-close pattern */
+.overlay-close {
+  appearance: none;
+  background: var(--cream-mid);
+  border: 1px solid var(--border-warm);
+  color: var(--ink);
+  border-radius: var(--radius-pill);
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.overlay-close:hover {
+  background: var(--yellow-soft);
+  border-color: var(--yellow);
+}
+
+.overlay-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.overlay-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 1rem 1.5rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.overlay-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.4;
+  font-family: system-ui, sans-serif;
+}
+
+/* ── Form fields ────────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.field-required {
+  color: #b05370; /* matches .pill color */
+  margin-left: 2px;
+}
+
+/* Reuses the .input token for consistency */
+.field-input {
+  width: 100%;
+  background: var(--cream-mid);
+  border: 1px solid var(--border-warm);
+  color: var(--ink);
+  border-radius: calc(var(--radius-lg) - 4px);
+  padding: 0.6rem 0.85rem;
+  font: inherit;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field-input:focus {
+  border-color: var(--yellow);
+  outline: 2px solid rgba(212,160,23,.45);
+  outline-offset: 1px;
+}
+
+.field--error .field-input {
+  border-color: var(--pink-deep);
+}
+
+.field--error .field-input:focus {
+  outline-color: rgba(240,138,163,.4);
+}
+
+.field-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+}
+
+.field-error {
+  font-size: 0.75rem;
+  color: #b05370;
+  font-weight: 500;
+  font-family: system-ui, sans-serif;
 }
 
 /* ── Responsive ───────────────────────────────────────────── */

@@ -90,7 +90,7 @@ const EMPTY_FORM: FormState = {
 
 // Your Netlify DB store name — change this to match what you created in the
 // Netlify dashboard (or via `netlify db:create`).
-const NETLIFY_DB_STORE = "beans";
+const NETLIFY_DB_STORE = "production";
 
 // Netlify DB REST base URL for the current site (injected at build time).
 // VITE_NETLIFY_DB_URL should be set in your Netlify environment variables and

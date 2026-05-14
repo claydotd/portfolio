@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Tone from "tone";
-import { weather_api_key } from './secrets';
 import img1 from "./1.png";
 import img2 from "./2.png";
 import img3 from "./3.png";
@@ -193,7 +192,7 @@ const DEFAULT_BASS_GROUPS: BassGroup[] = Array.from({ length: 16 }, (_, i) => {
   };
 });
 
-const OPENWEATHER_API_KEY = weather_api_key;
+const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
 
 // API mode toggle
 // "onecall" → One Call API 3.0 (8-day forecast, doubled to fill 16 steps).

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import beansJson from "./beans.json";
-import { GITHUB_CONFIG } from './secrets';
+import { GITHUB_CONFIG , LOGIN_CONFIG } from './secrets';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -199,9 +199,24 @@ export const BeanData = () => {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  const [loginForm, setLoginForm] = useState({
+    username: "",
+    password: "",
+  });
+
+  const [loginError, setLoginError] = useState("");
+
   // ---- form helpers -------------------------------------------------------
 
   const openAdd = () => {
+    if (!isAuthenticated) {
+      setLoginOpen(true);
+      return;
+    }
+  
     setEditingId(null);
     setForm(EMPTY_FORM);
     setErrors({});
@@ -211,6 +226,11 @@ export const BeanData = () => {
   };
 
   const openEdit = (bean: Bean) => {
+    if (!isAuthenticated) {
+      setLoginOpen(true);
+      return;
+    }
+  
     setEditingId(bean.id);
     setForm(beanToForm(bean));
     setErrors({});
@@ -253,6 +273,25 @@ export const BeanData = () => {
     });
   };
 
+  const handleLogin = () => {
+    if (
+      loginForm.username === LOGIN_CONFIG.username &&
+      loginForm.password === LOGIN_CONFIG.password
+    ) {
+      setIsAuthenticated(true);
+      setLoginOpen(false);
+      setLoginError("");
+  
+      setLoginForm({
+        username: "",
+        password: "",
+      });
+  
+      return;
+    }
+  
+    setLoginError("Invalid username or password.");
+  };
   // ---- submit (save locally + commit to GitHub) ---------------------------
 
   const handleSubmit = async () => {
@@ -385,6 +424,17 @@ export const BeanData = () => {
           <button className="btn btn-add" onClick={openAdd}>
             +
           </button>
+
+          {!isAuthenticated ? (
+            <button
+              className="btn ghost"
+              onClick={() => setLoginOpen(true)}
+            >
+              Login
+            </button>
+          ) : (
+            <span className="pill">Spill the beans</span>
+          )}
         </div>
 
         <table className="bean-table">
@@ -397,7 +447,7 @@ export const BeanData = () => {
               <th>Date Purchased</th>
               <th>Notes</th>
               <th>Great On</th>
-              <th>Edit</th>
+              {isAuthenticated && <th>Edit</th>}
             </tr>
           </thead>
           <tbody>
@@ -422,11 +472,16 @@ export const BeanData = () => {
                     ))}
                   </ul>
                 </td>
-                <td>
-                  <button className="btn btn-edit" onClick={() => openEdit(bean)}>
-                    Edit
-                  </button>
-                </td>
+                {isAuthenticated && (
+                  <td>
+                    <button
+                      className="btn btn-edit"
+                      onClick={() => openEdit(bean)}
+                    >
+                      Edit
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -472,16 +527,16 @@ export const BeanData = () => {
               />
               <Field
                 label="Date Purchased"
+                type="date"
                 value={form.datePurchased}
                 onChange={(v) => handleChange("datePurchased", v)}
-                placeholder="e.g. 2024-03-15"
               />
               <Field
                 label="Notes"
                 value={form.notes}
                 onChange={(v) => handleChange("notes", v)}
                 placeholder="Comma-separated, e.g. chocolate, fruity, floral"
-                hint="Separate multiple notes with commas."
+                hint="Tasting notes from the roaster."
               />
               <div className="field">
               <label className="field-label">Great On</label>
@@ -500,7 +555,7 @@ export const BeanData = () => {
               </div>
 
               <span className="field-hint">
-                Select all brew methods this coffee works well with.
+                Which methods did you really like it as?
               </span>
             </div>
 
@@ -532,6 +587,81 @@ export const BeanData = () => {
         </div>
       )}
 
+{loginOpen && (
+  <div
+    className="overlay-backdrop"
+    onClick={() => setLoginOpen(false)}
+  >
+    <div
+      className="overlay-panel"
+      onClick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Login"
+    >
+      <div className="overlay-header">
+        <h3>Login</h3>
+
+        <button
+          className="overlay-close"
+          onClick={() => setLoginOpen(false)}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="overlay-body">
+        <Field
+          label="Username"
+          value={loginForm.username}
+          onChange={(v) =>
+            setLoginForm((p) => ({
+              ...p,
+              username: v,
+            }))
+          }
+          required
+        />
+
+        <Field
+          label="Password"
+          type="password"
+          value={loginForm.password}
+          onChange={(v) =>
+            setLoginForm((p) => ({
+              ...p,
+              password: v,
+            }))
+          }
+          required
+        />
+
+        {loginError && (
+          <p className="overlay-error">
+            ✕ {loginError}
+          </p>
+        )}
+      </div>
+
+      <div className="overlay-footer">
+        <button
+          className="btn btn-cancel"
+          onClick={() => setLoginOpen(false)}
+        >
+          Cancel
+        </button>
+
+        <button
+          className="btn btn-submit"
+          onClick={handleLogin}
+        >
+          Login
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       
     </section>
   );
@@ -549,6 +679,7 @@ interface FieldProps {
   required?: boolean;
   placeholder?: string;
   hint?: string;
+  type?: string;
 }
 
 function Field({
@@ -559,6 +690,7 @@ function Field({
   required,
   placeholder,
   hint,
+  type = "text",
 }: FieldProps) {
   return (
     <div className={`field${error ? " field--error" : ""}`}>
@@ -568,7 +700,7 @@ function Field({
       </label>
       <input
         className="field-input"
-        type="text"
+        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? ""}

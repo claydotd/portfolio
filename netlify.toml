@@ -1,0 +1,28 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Bookmarks and links from the old GitHub Pages URL (…/portfolio/…)
+[[redirects]]
+  from = "/portfolio"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/portfolio/"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/portfolio/*"
+  to = "/:splat"
+  status = 301
+  force = true
+
+# SPA: client-side routes (React Router)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -769,6 +769,7 @@ useEffect(() => {
     Tone.Transport.bpm.rampTo(bpm, 0.08);
   }, [bpm]);
 
+  
   //  Weather fetch
   const fetchForecast = useCallback(async () => {
     setIsFetchingWeather(true);
@@ -776,6 +777,12 @@ useEffect(() => {
     try {
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+      const apiKey = OPENWEATHER_API_KEY;
+      if (!apiKey) {
+        window.clearTimeout(timeoutId);
+        throw new Error("OpenWeather API key is not configured");
+      }
 
       let days: ForecastDay[];
 
@@ -786,7 +793,7 @@ useEffect(() => {
           lon: String(selectedLocation.lon),
           exclude: "current,minutely,hourly,alerts",
           units: "metric",
-          appid: OPENWEATHER_API_KEY,
+          appid: apiKey,
         });
         const response = await fetch(`${OPENWEATHER_ONECALL_ENDPOINT}?${params.toString()}`, { signal: controller.signal });
         window.clearTimeout(timeoutId);
@@ -801,7 +808,7 @@ useEffect(() => {
           lon: String(selectedLocation.lon),
           cnt: String(FORECAST_STEP_COUNT),
           units: "metric",
-          appid: OPENWEATHER_API_KEY,
+          appid: apiKey,
         });
         const response = await fetch(`${OPENWEATHER_DAILY_ENDPOINT}?${params.toString()}`, { signal: controller.signal });
         window.clearTimeout(timeoutId);

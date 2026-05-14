@@ -16,17 +16,17 @@ export const App = () => {
   return (
     <Layout>
       <Routes>
-        <Route path="/portfolio" element={<Home />} />
-        <Route path="/portfolio/about" element={<About />} />
-        <Route path="/portfolio/weather-music" element={<WeatherMusic />} />
-        <Route path="/portfolio/bean-data" element={<BeanData />} />
-        {/* <Route path="/portfolio/music-practice-pal" element={<MusicPracticePal />} />
-        <Route path="/portfolio/music-practice-pal/key-to-key-signatures" element={<KeyToKeySignatures />} />
-        <Route path="/portfolio/music-practice-pal/interval-inspector" element={<IntervalInspector />} />
-        <Route path="/portfolio/music-practice-pal/rhythm-workshop" element={<RhythmWorkshop />} />
-        <Route path="/portfolio/music-practice-pal/scale-builder" element={<ScaleBuilder />} />
-        <Route path="/portfolio/music-practice-pal/chord-lab" element={<ChordLab />} />
-        <Route path="/portfolio/music-practice-pal/practice-planner" element={<PracticePlanner />} /> */}
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/weather-music" element={<WeatherMusic />} />
+        <Route path="/bean-data" element={<BeanData />} />
+        {/* <Route path="/music-practice-pal" element={<MusicPracticePal />} />
+        <Route path="/music-practice-pal/key-to-key-signatures" element={<KeyToKeySignatures />} />
+        <Route path="/music-practice-pal/interval-inspector" element={<IntervalInspector />} />
+        <Route path="/music-practice-pal/rhythm-workshop" element={<RhythmWorkshop />} />
+        <Route path="/music-practice-pal/scale-builder" element={<ScaleBuilder />} />
+        <Route path="/music-practice-pal/chord-lab" element={<ChordLab />} />
+        <Route path="/music-practice-pal/practice-planner" element={<PracticePlanner />} /> */}
       </Routes>
     </Layout>
   );

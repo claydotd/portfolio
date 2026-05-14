@@ -31,7 +31,7 @@ export const Home = () => {
         <h2>Featured projects</h2>
         <p className="section-subtitle">Here are a couple of projects that I'm proud of! More coming soon...</p>
         <div className="card-grid">
-          <Link to="/portfolio/weather-music" className="card card-link">
+          <Link to="/weather-music" className="card card-link">
             <h3>Weather Music</h3>
             <p>
               A step-sequenced synth, bass, and drum sequencer that uses the weather to determine the notes and sounds.
@@ -39,14 +39,14 @@ export const Home = () => {
             </p>
             <span className="pill">View project</span>
           </Link>
-          <Link to="/portfolio/bean-data" className="card card-link">
+          <Link to="/bean-data" className="card card-link">
             <h3>Bean Data</h3>
             <p>
               Coffee is my <span style={{ fontStyle: "italic" }}>uisge beatha</span>. This is a project to visualise data from my coffee bean purchases. I'm using this project to experiment with data visualisation.
             </p>
             <span className="pill">View project</span>
           </Link>
-          {/* <Link to="/portfolio/music-practice-pal" className="card card-link">
+          {/* <Link to="/music-practice-pal" className="card card-link">
             <h3>Music Practice Pal</h3>
             <p>
               A set of tools for learning and practicing music rudiments created with{" "}

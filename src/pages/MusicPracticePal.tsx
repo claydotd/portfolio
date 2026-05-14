@@ -35,7 +35,7 @@ export const MusicPracticePal = () => {
           {APPLETS.map((applet) => (
             <Link
               key={applet.id}
-              to={`/portfolio/music-practice-pal/${applet.id}`}
+              to={`/music-practice-pal/${applet.id}`}
               className="card card-link"
             >
               <h3>{applet.title}</h3>

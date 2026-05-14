@@ -15,7 +15,7 @@ export const Layout = ({ children }: LayoutProps) => {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-inner">
-          <Link to="/portfolio" className="brand">
+          <Link to="/" className="brand">
             <span className="brand-mark" />
             <span className="brand-text">Clay Dowdell Leslie</span>
           </Link>
@@ -23,7 +23,7 @@ export const Layout = ({ children }: LayoutProps) => {
           {/* Desktop nav */}
           <nav className="nav-links desktop-nav">
             <NavLink
-              to="/portfolio"
+              to="/"
               end
               className={({ isActive }) =>
                 isActive ? "nav-link active" : "nav-link"
@@ -33,7 +33,7 @@ export const Layout = ({ children }: LayoutProps) => {
             </NavLink>
 
             <NavLink
-              to="/portfolio/about"
+              to="/about"
               className={({ isActive }) =>
                 isActive ? "nav-link active" : "nav-link"
               }
@@ -42,7 +42,7 @@ export const Layout = ({ children }: LayoutProps) => {
             </NavLink>
 
             <NavLink
-              to="/portfolio/bean-data"
+              to="/bean-data"
               className={({ isActive }) =>
                 isActive ? "nav-link active" : "nav-link"
               }
@@ -51,7 +51,7 @@ export const Layout = ({ children }: LayoutProps) => {
             </NavLink>
 
             <NavLink
-              to="/portfolio/weather-music"
+              to="/weather-music"
               className={({ isActive }) =>
                 isActive ? "nav-link active" : "nav-link"
               }
@@ -99,7 +99,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
         <nav className="mobile-nav-links">
           <NavLink
-            to="/portfolio"
+            to="/"
             end
             onClick={closeMenu}
             className={({ isActive }) =>
@@ -110,7 +110,7 @@ export const Layout = ({ children }: LayoutProps) => {
           </NavLink>
 
           <NavLink
-            to="/portfolio/about"
+            to="/about"
             onClick={closeMenu}
             className={({ isActive }) =>
               isActive ? "mobile-nav-link active" : "mobile-nav-link"
@@ -120,7 +120,7 @@ export const Layout = ({ children }: LayoutProps) => {
           </NavLink>
 
           <NavLink
-            to="/portfolio/bean-data"
+            to="/bean-data"
             onClick={closeMenu}
             className={({ isActive }) =>
               isActive ? "mobile-nav-link active" : "mobile-nav-link"
@@ -130,7 +130,7 @@ export const Layout = ({ children }: LayoutProps) => {
           </NavLink>
 
           <NavLink
-            to="/portfolio/weather-music"
+            to="/weather-music"
             onClick={closeMenu}
             className={({ isActive }) =>
               isActive ? "mobile-nav-link active" : "mobile-nav-link"

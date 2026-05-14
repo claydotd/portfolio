@@ -92,10 +92,10 @@ const EMPTY_FORM: FormState = {
 // Netlify dashboard (or via `netlify db:create`).
 const NETLIFY_DB_STORE = "production";
 
-// Netlify DB REST base URL for the current site (injected at build time).
-// VITE_NETLIFY_DB_URL should be set in your Netlify environment variables and
-// in a local .env file, e.g.:
-//   VITE_NETLIFY_DB_URL=https://<site-id>.netlify.app/.netlify/functions/database
+// Netlify DB REST base URL for the serverless function (no trailing slash).
+// VITE_NETLIFY_DB_URL in Netlify env vars and local .env, e.g.:
+//   VITE_NETLIFY_DB_URL=https://<your-site>.netlify.app/.netlify/functions/database
+// The app calls this URL with ?store=…&list=true or ?store=…&key=bean-{id}.
 const NETLIFY_DB_URL = import.meta.env.VITE_NETLIFY_DB_URL as string;
 
 // ---------------------------------------------------------------------------
@@ -157,9 +157,10 @@ async function fetchBeansFromNetlify(): Promise<Bean[]> {
     );
   }
 
-  // List all keys in the store
   const listRes = await fetch(
-    `${NETLIFY_DB_URL}/${NETLIFY_DB_STORE}?list=true`
+    `${NETLIFY_DB_URL}?store=${encodeURIComponent(
+      NETLIFY_DB_STORE
+    )}&list=true`
   );
   if (!listRes.ok) {
     throw new Error(`Failed to list beans: ${listRes.status}`);
@@ -172,7 +173,11 @@ async function fetchBeansFromNetlify(): Promise<Bean[]> {
   // Fetch each bean in parallel
   const beans = await Promise.all(
     keys.map(async (key) => {
-      const res = await fetch(`${NETLIFY_DB_URL}/${NETLIFY_DB_STORE}/${key}`);
+      const res = await fetch(
+        `${NETLIFY_DB_URL}?store=${encodeURIComponent(
+          NETLIFY_DB_STORE
+        )}&key=${encodeURIComponent(key)}`
+      );
       if (!res.ok) return null;
       const { value } = await res.json();
       return JSON.parse(value) as Bean;
@@ -194,11 +199,16 @@ async function saveBeanToNetlify(bean: Bean): Promise<void> {
   }
 
   const key = `bean-${bean.id}`;
-  const res = await fetch(`${NETLIFY_DB_URL}/${NETLIFY_DB_STORE}/${key}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ value: JSON.stringify(bean) }),
-  });
+  const res = await fetch(
+    `${NETLIFY_DB_URL}?store=${encodeURIComponent(
+      NETLIFY_DB_STORE
+    )}&key=${encodeURIComponent(key)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: JSON.stringify(bean) }),
+    }
+  );
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

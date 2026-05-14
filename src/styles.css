@@ -2036,3 +2036,41 @@ h2 {
   align-items: center;
   gap: 0.5rem;
 }
+
+.bean-card-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+/* Label + content layout */
+.bean-card-label {
+  grid-column: 1 / -1;
+}
+
+/* Make content flexible */
+.bean-card-section p,
+.bean-card-section ul,
+.bean-card-section .bean-tags {
+  margin: 0;
+}
+
+.bean-tags {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, max-content));
+  gap: 0.5rem;
+}
+
+/* Responsive upgrade: allow multi-column layout when space allows */
+@media (min-width: 420px) {
+  .bean-card-section {
+    grid-template-columns: 120px 1fr;
+    align-items: start;
+  }
+
+  .bean-card-label {
+    grid-column: 1;
+    margin-bottom: 0;
+  }
+}

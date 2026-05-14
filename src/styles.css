@@ -1423,17 +1423,19 @@ h2 {
   margin-bottom: 0.75rem;
 }
 
+.mobile-cards {
+  display: grid;
+  gap: 1rem;
+}
+
+/* After .mobile-cards so equal-specificity .mobile-only wins on elements
+   that use both classes (bean list: cards vs table by breakpoint). */
 .mobile-only {
   display: none;
 }
 
 .desktop-only {
   display: block;
-}
-
-.mobile-cards {
-  display: grid;
-  gap: 1rem;
 }
 
 .table-wrapper {

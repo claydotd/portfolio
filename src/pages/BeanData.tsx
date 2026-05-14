@@ -1,6 +1,42 @@
 import { useState } from "react";
 import beansJson from "./beans.json";
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface Bean {
+  id: number;
+  roaster: string;
+  name: string;
+  origin: string;
+  datePurchased: string;
+  notes: string[];
+  greatOn: string[];
+}
+
+interface FormState {
+  roaster: string;
+  name: string;
+  origin: string;
+  datePurchased: string;
+  notes: string;
+  greatOn: string;
+}
+
+interface GitHubConfig {
+  owner: string;
+  repo: string;
+  path: string;
+  token: string;
+}
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const BEAN_DATA_PLAN = [
   {
     id: 1,
@@ -39,7 +75,7 @@ const BEAN_DATA_PLAN = [
   },
 ];
 
-const EMPTY_FORM = {
+const EMPTY_FORM: FormState = {
   roaster: "",
   name: "",
   origin: "",
@@ -48,23 +84,30 @@ const EMPTY_FORM = {
   greatOn: "",
 };
 
-interface Bean {
-  id: number;
-  roaster: string;
-  name: string;
-  origin: string;
-  datePurchased: string;
-  notes: string[];
-  greatOn: string[];
+const GITHUB_CONFIG_KEY = "beandata_github_config";
+
+const EMPTY_CONFIG: GitHubConfig = {
+  owner: "",
+  repo: "",
+  path: "src/pages/beans.json",
+  token: "",
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function loadConfig(): GitHubConfig {
+  try {
+    const raw = localStorage.getItem(GITHUB_CONFIG_KEY);
+    return raw ? { ...EMPTY_CONFIG, ...JSON.parse(raw) } : { ...EMPTY_CONFIG };
+  } catch {
+    return { ...EMPTY_CONFIG };
+  }
 }
 
-interface FormState {
-  roaster: string;
-  name: string;
-  origin: string;
-  datePurchased: string;
-  notes: string;
-  greatOn: string;
+function saveConfig(cfg: GitHubConfig) {
+  localStorage.setItem(GITHUB_CONFIG_KEY, JSON.stringify(cfg));
 }
 
 function beanToForm(bean: Bean): FormState {
@@ -98,25 +141,109 @@ function formToBean(form: FormState, id: number): Bean {
   };
 }
 
+// ---------------------------------------------------------------------------
+// GitHub API
+// ---------------------------------------------------------------------------
+
+/**
+ * Commits updated beans to GitHub by:
+ *  1. Fetching the current file to get its SHA (required for updates).
+ *  2. PUTting the new content with that SHA.
+ *
+ * Requires a fine-grained PAT with Contents: Read & Write on the target repo.
+ */
+async function commitBeansToGitHub(
+  beans: Bean[],
+  config: GitHubConfig
+): Promise<void> {
+  const { owner, repo, path, token } = config;
+
+  if (!owner || !repo || !path || !token) {
+    throw new Error(
+      "GitHub config is incomplete. Open Settings and fill in all fields."
+    );
+  }
+
+  const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "Content-Type": "application/json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+
+  // Step 1: get current SHA
+  const getRes = await fetch(apiBase, { headers });
+  if (!getRes.ok) {
+    const err = await getRes.json().catch(() => ({}));
+    throw new Error(
+      `Failed to fetch current file from GitHub: ${getRes.status} ${
+        (err as { message?: string }).message ?? ""
+      }`
+    );
+  }
+  const { sha } = (await getRes.json()) as { sha: string };
+
+  // Step 2: encode new content
+  const newContent = JSON.stringify({ entries: beans }, null, 2);
+  const encoded = btoa(unescape(encodeURIComponent(newContent)));
+
+  // Step 3: commit
+  const putRes = await fetch(apiBase, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({
+      message: "chore: update beans.json via BeanData app",
+      content: encoded,
+      sha,
+    }),
+  });
+
+  if (!putRes.ok) {
+    const err = await putRes.json().catch(() => ({}));
+    throw new Error(
+      `GitHub commit failed: ${putRes.status} ${
+        (err as { message?: string }).message ?? ""
+      }`
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Components
+// ---------------------------------------------------------------------------
+
 export const BeanData = () => {
-  const [beans, setBeans] = useState(beansJson.entries);
+  const [beans, setBeans] = useState<Bean[]>(beansJson.entries);
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<FormState>>({});
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Settings panel
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [config, setConfig] = useState<GitHubConfig>(loadConfig);
+  const [configDraft, setConfigDraft] = useState<GitHubConfig>(loadConfig);
+
+  // ---- form helpers -------------------------------------------------------
 
   const openAdd = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setErrors({});
+    setSaveStatus("idle");
+    setSaveError(null);
     setOverlayOpen(true);
   };
 
-  
   const openEdit = (bean: Bean) => {
     setEditingId(bean.id);
     setForm(beanToForm(bean));
     setErrors({});
+    setSaveStatus("idle");
+    setSaveError(null);
     setOverlayOpen(true);
   };
 
@@ -125,6 +252,8 @@ export const BeanData = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setErrors({});
+    setSaveStatus("idle");
+    setSaveError(null);
   };
 
   const validate = () => {
@@ -139,22 +268,26 @@ export const BeanData = () => {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
-  const handleSubmit = () => {
+  // ---- submit (save locally + commit to GitHub) ---------------------------
+
+  const handleSubmit = async () => {
     const e = validate();
     if (Object.keys(e).length) {
       setErrors(e);
       return;
     }
 
+    // Compute next beans state
+    let nextBeans: Bean[];
+
     setBeans((prev) => {
       if (editingId !== null) {
-        // Edit existing entry
-        return prev.map((b) =>
+        nextBeans = prev.map((b) =>
           b.id === editingId ? formToBean(form, editingId) : b
         );
+        return nextBeans;
       }
 
-      // Add or update by roaster+name match
       const match = prev.find(
         (b) =>
           b.roaster.toLowerCase() === form.roaster.trim().toLowerCase() &&
@@ -162,25 +295,92 @@ export const BeanData = () => {
       );
 
       if (match) {
-        return prev.map((b) =>
+        nextBeans = prev.map((b) =>
           b.id === match.id ? formToBean(form, match.id) : b
         );
+        return nextBeans;
       }
 
-      const newId = prev.length > 0 ? Math.max(...prev.map((b) => b.id)) + 1 : 1;
-      return [...prev, formToBean(form, newId)];
+      const newId =
+        prev.length > 0 ? Math.max(...prev.map((b) => b.id)) + 1 : 1;
+      nextBeans = [...prev, formToBean(form, newId)];
+      return nextBeans;
     });
 
-    closeOverlay();
+    // Commit to GitHub
+    setSaveStatus("saving");
+    setSaveError(null);
+
+    try {
+      // nextBeans is set synchronously above before the setState callback
+      // resolves, so we recompute from current beans + the new entry here.
+      const currentBeans = beans;
+      let committed: Bean[];
+
+      if (editingId !== null) {
+        committed = currentBeans.map((b) =>
+          b.id === editingId ? formToBean(form, editingId) : b
+        );
+      } else {
+        const match = currentBeans.find(
+          (b) =>
+            b.roaster.toLowerCase() === form.roaster.trim().toLowerCase() &&
+            b.name.toLowerCase() === form.name.trim().toLowerCase()
+        );
+        if (match) {
+          committed = currentBeans.map((b) =>
+            b.id === match.id ? formToBean(form, match.id) : b
+          );
+        } else {
+          const newId =
+            currentBeans.length > 0
+              ? Math.max(...currentBeans.map((b) => b.id)) + 1
+              : 1;
+          committed = [...currentBeans, formToBean(form, newId)];
+        }
+      }
+
+      await commitBeansToGitHub(committed, config);
+      setSaveStatus("saved");
+
+      // Close overlay after brief success flash
+      setTimeout(() => {
+        closeOverlay();
+      }, 900);
+    } catch (err) {
+      setSaveStatus("error");
+      setSaveError(err instanceof Error ? err.message : "Unknown error");
+    }
   };
 
-  const overlayTitle =
-    editingId !== null
-      ? "Edit Coffee Entry"
-      : "Add New Coffee";
+  // ---- settings -----------------------------------------------------------
 
-  const submitLabel =
-    editingId !== null ? "Save Changes" : "Add Coffee";
+  const openSettings = () => {
+    setConfigDraft({ ...config });
+    setSettingsOpen(true);
+  };
+
+  const saveSettings = () => {
+    saveConfig(configDraft);
+    setConfig(configDraft);
+    setSettingsOpen(false);
+  };
+
+  // ---- derived labels -----------------------------------------------------
+
+  const overlayTitle = editingId !== null ? "Edit Coffee Entry" : "Add New Coffee";
+
+  const submitLabel = () => {
+    if (saveStatus === "saving") return "Saving…";
+    if (saveStatus === "saved") return "Saved ✓";
+    if (saveStatus === "error") return "Retry";
+    return editingId !== null ? "Save Changes" : "Add Coffee";
+  };
+
+  const isConfigured =
+    config.owner && config.repo && config.path && config.token;
+
+  // ---- render -------------------------------------------------------------
 
   return (
     <section className="page">
@@ -195,11 +395,10 @@ export const BeanData = () => {
         <div>
           <p>The plan:</p>
           <ol>
-            {BEAN_DATA_PLAN.map((beanDataPlan) => (
-              <li key={beanDataPlan.id}>
-                <span className="pill">{beanDataPlan.status}</span>
-                <strong>{beanDataPlan.title}:</strong>{" "}
-                {beanDataPlan.description}
+            {BEAN_DATA_PLAN.map((item) => (
+              <li key={item.id}>
+                <span className="pill">{item.status}</span>
+                <strong>{item.title}:</strong> {item.description}
               </li>
             ))}
           </ol>
@@ -213,11 +412,18 @@ export const BeanData = () => {
           the contents of the file.
         </p>
 
-        {/* Add button */}
         <div className="table-toolbar">
           <button className="btn btn-add" onClick={openAdd}>
             +
           </button>
+          <button className="btn btn-settings" onClick={openSettings} title="GitHub settings">
+            ⚙ Settings
+          </button>
+          {!isConfigured && (
+            <span className="config-warning">
+              ⚠ GitHub not configured — changes won't be saved to the repo.
+            </span>
+          )}
         </div>
 
         <table className="bean-table">
@@ -256,10 +462,7 @@ export const BeanData = () => {
                   </ul>
                 </td>
                 <td>
-                  <button
-                    className="btn btn-edit"
-                    onClick={() => openEdit(bean)}
-                  >
+                  <button className="btn btn-edit" onClick={() => openEdit(bean)}>
                     Edit
                   </button>
                 </td>
@@ -269,7 +472,7 @@ export const BeanData = () => {
         </table>
       </section>
 
-      {/* Overlay */}
+      {/* ── Add / Edit overlay ───────────────────────────────────────────── */}
       {overlayOpen && (
         <div className="overlay-backdrop" onClick={closeOverlay}>
           <div
@@ -281,11 +484,7 @@ export const BeanData = () => {
           >
             <div className="overlay-header">
               <h3>{overlayTitle}</h3>
-              <button
-                className="overlay-close"
-                onClick={closeOverlay}
-                aria-label="Close"
-              >
+              <button className="overlay-close" onClick={closeOverlay} aria-label="Close">
                 ✕
               </button>
             </div>
@@ -333,8 +532,28 @@ export const BeanData = () => {
 
               {editingId === null && (
                 <p className="overlay-hint">
-                  If a coffee with the same roaster and name already exists,
-                  its entry will be updated instead of creating a duplicate.
+                  If a coffee with the same roaster and name already exists, its
+                  entry will be updated instead of creating a duplicate.
+                </p>
+              )}
+
+              {saveStatus === "error" && saveError && (
+                <p className="overlay-error">✕ {saveError}</p>
+              )}
+
+              {!isConfigured && (
+                <p className="overlay-hint overlay-hint--warn">
+                  ⚠ GitHub is not configured. Your change will be saved in the
+                  app but <strong>won't be committed</strong> to the repo.{" "}
+                  <button
+                    className="btn-inline"
+                    onClick={() => {
+                      closeOverlay();
+                      openSettings();
+                    }}
+                  >
+                    Open Settings
+                  </button>
                 </p>
               )}
             </div>
@@ -343,8 +562,97 @@ export const BeanData = () => {
               <button className="btn btn-cancel" onClick={closeOverlay}>
                 Cancel
               </button>
-              <button className="btn btn-submit" onClick={handleSubmit}>
-                {submitLabel}
+              <button
+                className={`btn btn-submit btn-submit--${saveStatus}`}
+                onClick={handleSubmit}
+                disabled={saveStatus === "saving" || saveStatus === "saved"}
+              >
+                {submitLabel()}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Settings overlay ─────────────────────────────────────────────── */}
+      {settingsOpen && (
+        <div
+          className="overlay-backdrop"
+          onClick={() => setSettingsOpen(false)}
+        >
+          <div
+            className="overlay-panel"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="GitHub Settings"
+          >
+            <div className="overlay-header">
+              <h3>GitHub Settings</h3>
+              <button
+                className="overlay-close"
+                onClick={() => setSettingsOpen(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="overlay-body">
+              <p className="overlay-hint">
+                These details are stored only in your browser's{" "}
+                <code>localStorage</code> and never sent anywhere except the
+                GitHub API.
+              </p>
+
+              <Field
+                label="Owner (GitHub username or org)"
+                value={configDraft.owner}
+                onChange={(v) =>
+                  setConfigDraft((p) => ({ ...p, owner: v }))
+                }
+                placeholder="e.g. monsieurRoaster"
+                required
+              />
+              <Field
+                label="Repository name"
+                value={configDraft.repo}
+                onChange={(v) =>
+                  setConfigDraft((p) => ({ ...p, repo: v }))
+                }
+                placeholder="e.g. bean-data"
+                required
+              />
+              <Field
+                label="Path to beans.json in the repo"
+                value={configDraft.path}
+                onChange={(v) =>
+                  setConfigDraft((p) => ({ ...p, path: v }))
+                }
+                placeholder="e.g. src/beans.json"
+                required
+              />
+              <Field
+                label="Personal Access Token (PAT)"
+                value={configDraft.token}
+                onChange={(v) =>
+                  setConfigDraft((p) => ({ ...p, token: v }))
+                }
+                placeholder="github_pat_…"
+                required
+                hint="Use a fine-grained PAT with Contents: Read & Write, scoped to this repo only."
+              />
+            </div>
+
+            <div className="overlay-footer">
+              <button
+                className="btn btn-cancel"
+                onClick={() => setSettingsOpen(false)}
+              >
+                Cancel
+              </button>
+              <button className="btn btn-submit" onClick={saveSettings}>
+                Save Settings
               </button>
             </div>
           </div>
@@ -353,6 +661,10 @@ export const BeanData = () => {
     </section>
   );
 };
+
+// ---------------------------------------------------------------------------
+// Field component
+// ---------------------------------------------------------------------------
 
 interface FieldProps {
   label: string;
@@ -364,7 +676,15 @@ interface FieldProps {
   hint?: string;
 }
 
-function Field({ label, value, onChange, error, required, placeholder, hint }: FieldProps) {
+function Field({
+  label,
+  value,
+  onChange,
+  error,
+  required,
+  placeholder,
+  hint,
+}: FieldProps) {
   return (
     <div className={`field${error ? " field--error" : ""}`}>
       <label className="field-label">

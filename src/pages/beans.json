@@ -193,15 +193,6 @@
       "greatOn": [
         "latte"
       ]
-    },
-    {
-      "id": 13,
-      "roaster": "Testing",
-      "name": "Testing1",
-      "origin": "",
-      "datePurchased": "",
-      "notes": [],
-      "greatOn": []
     }
   ]
 }

@@ -1436,6 +1436,25 @@ h2 {
   margin-bottom: 0.75rem;
 }
 
+/* ── Bean list: show table OR cards by viewport ─────────── */
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
+.mobile-cards {
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ── Bean overlay (reuses .modal-overlay backdrop pattern) ── */
 .overlay-backdrop {
   position: fixed;
@@ -1643,6 +1662,14 @@ h2 {
   }
 
   .weather-sequencer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: flex;
+  }
 }
 
 /* ── Drum pill button ─────────────────────────────────────── */

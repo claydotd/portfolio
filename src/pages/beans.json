@@ -13,9 +13,6 @@
         "Mango"
       ],
       "greatOn": [
-        "pourover",
-        "espresso",
-        "latte",
         "Pour Over",
         "Espresso",
         "Latte"
@@ -33,9 +30,9 @@
         "Caramel"
       ],
       "greatOn": [
-        "pourover",
-        "latte",
-        "aeropress"
+        "Pour Over",
+        "Latte",
+        "Aeropress"
       ]
     },
     {
@@ -51,7 +48,7 @@
         "Fudge"
       ],
       "greatOn": [
-        "espresso"
+        "Espresso"
       ]
     },
     {
@@ -66,8 +63,8 @@
         "Honey"
       ],
       "greatOn": [
-        "pourover",
-        "aeropress"
+        "Pour Over",
+        "Aeropress"
       ]
     },
     {
@@ -82,8 +79,8 @@
         "Dark Chocolate"
       ],
       "greatOn": [
-        "pourover",
-        "latte"
+        "Pour Over",
+        "Latte"
       ]
     },
     {
@@ -98,9 +95,9 @@
         "Golden Raisin"
       ],
       "greatOn": [
-        "pourover",
-        "latte",
-        "espresso"
+        "Pour Over",
+        "Latte",
+        "Espresso"
       ]
     },
     {
@@ -115,8 +112,8 @@
         "Peanut"
       ],
       "greatOn": [
-        "espresso",
-        "latte"
+        "Espresso",
+        "Latte"
       ]
     },
     {
@@ -131,7 +128,7 @@
         "Dried Fruit"
       ],
       "greatOn": [
-        "aeropress"
+        "Aeropress"
       ]
     },
     {
@@ -146,7 +143,7 @@
         "Honeysuckle"
       ],
       "greatOn": [
-        "pourover"
+        "Pour Over"
       ]
     },
     {
@@ -161,8 +158,8 @@
         "Dried Fruit"
       ],
       "greatOn": [
-        "espresso",
-        "latte"
+        "Espresso",
+        "Latte"
       ]
     },
     {
@@ -177,9 +174,9 @@
         "Bold"
       ],
       "greatOn": [
-        "pourover",
-        "aeropress",
-        "latte"
+        "Pour Over",
+        "Aeropress",
+        "Latte"
       ]
     },
     {
@@ -194,7 +191,7 @@
         "Vanilla cake"
       ],
       "greatOn": [
-        "latte"
+        "Latte"
       ]
     }
   ]

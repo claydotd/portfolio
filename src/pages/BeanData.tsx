@@ -1,5 +1,6 @@
 import { useState } from "react";
 import beansJson from "./beans.json";
+import { GITHUB_CONFIG } from './secrets';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,14 +22,7 @@ interface FormState {
   origin: string;
   datePurchased: string;
   notes: string;
-  greatOn: string;
-}
-
-interface GitHubConfig {
-  owner: string;
-  repo: string;
-  path: string;
-  token: string;
+  greatOn: string[];
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -36,6 +30,14 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+const BREW_METHODS = [
+  "Pour Over",
+  "Espresso",
+  "Latte",
+  "Aeropress",
+  "French Press",
+] as const;
 
 const BEAN_DATA_PLAN = [
   {
@@ -81,34 +83,13 @@ const EMPTY_FORM: FormState = {
   origin: "",
   datePurchased: "",
   notes: "",
-  greatOn: "",
+  greatOn: [],
 };
 
-const GITHUB_CONFIG_KEY = "beandata_github_config";
-
-const EMPTY_CONFIG: GitHubConfig = {
-  owner: "",
-  repo: "",
-  path: "src/pages/beans.json",
-  token: "",
-};
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function loadConfig(): GitHubConfig {
-  try {
-    const raw = localStorage.getItem(GITHUB_CONFIG_KEY);
-    return raw ? { ...EMPTY_CONFIG, ...JSON.parse(raw) } : { ...EMPTY_CONFIG };
-  } catch {
-    return { ...EMPTY_CONFIG };
-  }
-}
-
-function saveConfig(cfg: GitHubConfig) {
-  localStorage.setItem(GITHUB_CONFIG_KEY, JSON.stringify(cfg));
-}
 
 function beanToForm(bean: Bean): FormState {
   return {
@@ -118,8 +99,8 @@ function beanToForm(bean: Bean): FormState {
     datePurchased: bean.datePurchased ?? "",
     notes: Array.isArray(bean.notes) ? bean.notes.join(", ") : bean.notes ?? "",
     greatOn: Array.isArray(bean.greatOn)
-      ? bean.greatOn.join(", ")
-      : bean.greatOn ?? "",
+      ? bean.greatOn
+      : [],
   };
 }
 
@@ -134,10 +115,7 @@ function formToBean(form: FormState, id: number): Bean {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
-    greatOn: form.greatOn
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
+      greatOn: form.greatOn,
   };
 }
 
@@ -154,9 +132,8 @@ function formToBean(form: FormState, id: number): Bean {
  */
 async function commitBeansToGitHub(
   beans: Bean[],
-  config: GitHubConfig
 ): Promise<void> {
-  const { owner, repo, path, token } = config;
+  const { owner, repo, path, token } = GITHUB_CONFIG;
 
   if (!owner || !repo || !path || !token) {
     throw new Error(
@@ -222,11 +199,6 @@ export const BeanData = () => {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Settings panel
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [config, setConfig] = useState<GitHubConfig>(loadConfig);
-  const [configDraft, setConfigDraft] = useState<GitHubConfig>(loadConfig);
-
   // ---- form helpers -------------------------------------------------------
 
   const openAdd = () => {
@@ -266,6 +238,19 @@ export const BeanData = () => {
   const handleChange = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const handleGreatOnToggle = (method: string) => {
+    setForm((prev) => {
+      const exists = prev.greatOn.includes(method);
+  
+      return {
+        ...prev,
+        greatOn: exists
+          ? prev.greatOn.filter((m) => m !== method)
+          : [...prev.greatOn, method],
+      };
+    });
   };
 
   // ---- submit (save locally + commit to GitHub) ---------------------------
@@ -340,7 +325,7 @@ export const BeanData = () => {
         }
       }
 
-      await commitBeansToGitHub(committed, config);
+      await commitBeansToGitHub(committed);
       setSaveStatus("saved");
 
       // Close overlay after brief success flash
@@ -353,19 +338,6 @@ export const BeanData = () => {
     }
   };
 
-  // ---- settings -----------------------------------------------------------
-
-  const openSettings = () => {
-    setConfigDraft({ ...config });
-    setSettingsOpen(true);
-  };
-
-  const saveSettings = () => {
-    saveConfig(configDraft);
-    setConfig(configDraft);
-    setSettingsOpen(false);
-  };
-
   // ---- derived labels -----------------------------------------------------
 
   const overlayTitle = editingId !== null ? "Edit Coffee Entry" : "Add New Coffee";
@@ -376,9 +348,6 @@ export const BeanData = () => {
     if (saveStatus === "error") return "Retry";
     return editingId !== null ? "Save Changes" : "Add Coffee";
   };
-
-  const isConfigured =
-    config.owner && config.repo && config.path && config.token;
 
   // ---- render -------------------------------------------------------------
 
@@ -416,14 +385,6 @@ export const BeanData = () => {
           <button className="btn btn-add" onClick={openAdd}>
             +
           </button>
-          <button className="btn btn-settings" onClick={openSettings} title="GitHub settings">
-            ⚙ Settings
-          </button>
-          {!isConfigured && (
-            <span className="config-warning">
-              ⚠ GitHub not configured — changes won't be saved to the repo.
-            </span>
-          )}
         </div>
 
         <table className="bean-table">
@@ -522,13 +483,26 @@ export const BeanData = () => {
                 placeholder="Comma-separated, e.g. chocolate, fruity, floral"
                 hint="Separate multiple notes with commas."
               />
-              <Field
-                label="Great On"
-                value={form.greatOn}
-                onChange={(v) => handleChange("greatOn", v)}
-                placeholder="Comma-separated, e.g. espresso, filter"
-                hint="Separate multiple brew methods with commas."
-              />
+              <div className="field">
+              <label className="field-label">Great On</label>
+
+              <div className="checkbox-group">
+                {BREW_METHODS.map((method) => (
+                  <label key={method} className="checkbox-option">
+                    <input
+                      type="checkbox"
+                      checked={form.greatOn.includes(method)}
+                      onChange={() => handleGreatOnToggle(method)}
+                    />
+                    <span>{method}</span>
+                  </label>
+                ))}
+              </div>
+
+              <span className="field-hint">
+                Select all brew methods this coffee works well with.
+              </span>
+            </div>
 
               {editingId === null && (
                 <p className="overlay-hint">
@@ -539,22 +513,6 @@ export const BeanData = () => {
 
               {saveStatus === "error" && saveError && (
                 <p className="overlay-error">✕ {saveError}</p>
-              )}
-
-              {!isConfigured && (
-                <p className="overlay-hint overlay-hint--warn">
-                  ⚠ GitHub is not configured. Your change will be saved in the
-                  app but <strong>won't be committed</strong> to the repo.{" "}
-                  <button
-                    className="btn-inline"
-                    onClick={() => {
-                      closeOverlay();
-                      openSettings();
-                    }}
-                  >
-                    Open Settings
-                  </button>
-                </p>
               )}
             </div>
 
@@ -574,90 +532,7 @@ export const BeanData = () => {
         </div>
       )}
 
-      {/* ── Settings overlay ─────────────────────────────────────────────── */}
-      {settingsOpen && (
-        <div
-          className="overlay-backdrop"
-          onClick={() => setSettingsOpen(false)}
-        >
-          <div
-            className="overlay-panel"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="GitHub Settings"
-          >
-            <div className="overlay-header">
-              <h3>GitHub Settings</h3>
-              <button
-                className="overlay-close"
-                onClick={() => setSettingsOpen(false)}
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="overlay-body">
-              <p className="overlay-hint">
-                These details are stored only in your browser's{" "}
-                <code>localStorage</code> and never sent anywhere except the
-                GitHub API.
-              </p>
-
-              <Field
-                label="Owner (GitHub username or org)"
-                value={configDraft.owner}
-                onChange={(v) =>
-                  setConfigDraft((p) => ({ ...p, owner: v }))
-                }
-                placeholder="e.g. monsieurRoaster"
-                required
-              />
-              <Field
-                label="Repository name"
-                value={configDraft.repo}
-                onChange={(v) =>
-                  setConfigDraft((p) => ({ ...p, repo: v }))
-                }
-                placeholder="e.g. bean-data"
-                required
-              />
-              <Field
-                label="Path to beans.json in the repo"
-                value={configDraft.path}
-                onChange={(v) =>
-                  setConfigDraft((p) => ({ ...p, path: v }))
-                }
-                placeholder="e.g. src/beans.json"
-                required
-              />
-              <Field
-                label="Personal Access Token (PAT)"
-                value={configDraft.token}
-                onChange={(v) =>
-                  setConfigDraft((p) => ({ ...p, token: v }))
-                }
-                placeholder="github_pat_…"
-                required
-                hint="Use a fine-grained PAT with Contents: Read & Write, scoped to this repo only."
-              />
-            </div>
-
-            <div className="overlay-footer">
-              <button
-                className="btn btn-cancel"
-                onClick={() => setSettingsOpen(false)}
-              >
-                Cancel
-              </button>
-              <button className="btn btn-submit" onClick={saveSettings}>
-                Save Settings
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      
     </section>
   );
 };

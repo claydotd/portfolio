@@ -34,6 +34,8 @@
   --shadow-soft: 0 20px 40px rgba(44,35,24,.12), 0 4px 12px rgba(44,35,24,.06);
   --nav-height:  64px;
   --max-width:   960px;
+  /* Shared scrim for modals, mobile menu backdrop, overlays */
+  --overlay-scrim: rgba(44,35,24,.45);
 }
 
 *,
@@ -195,8 +197,7 @@ h2 {
 }
 
 .subtitle {
-  margin: 0;
-  margin-bottom: 1.5rem;
+  margin: 0 0 1.5rem;
   color: var(--muted);
   max-width: 34rem;
   font-family: system-ui, sans-serif;
@@ -248,7 +249,7 @@ h2 {
   position: fixed;
   inset: 0;
 
-  background: rgba(44,35,24,.45);
+  background: var(--overlay-scrim);
 
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -433,15 +434,17 @@ h2 {
   color: var(--ink);
 }
 
-/* ── BeanData: Add button ───────────────────────────────── */
-.btn-add {
+/* ── BeanData: Add / submit (same chrome) ────────────────── */
+.btn-add,
+.btn-submit {
   background: linear-gradient(135deg, var(--yellow) 0%, #ffe066 100%);
   color: #2b1f00;
   border-color: rgba(255,216,77,.35);
   box-shadow: 0 6px 18px var(--yellow-soft);
 }
 
-.btn-add:hover {
+.btn-add:hover,
+.btn-submit:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 24px var(--yellow-glow);
 }
@@ -475,19 +478,6 @@ h2 {
   color: var(--ink);
 }
 
-/* ── BeanData: Submit button ────────────────────────────── */
-.btn-submit {
-  background: linear-gradient(135deg, var(--yellow) 0%, #ffe066 100%);
-  color: #2b1f00;
-  border-color: rgba(255,216,77,.35);
-  box-shadow: 0 6px 18px var(--yellow-soft);
-}
-
-.btn-submit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px var(--yellow-glow);
-}
-
 /* ── Section cards ────────────────────────────────────────── */
 .section {
   margin-top: 2.5rem;
@@ -501,8 +491,7 @@ h2 {
 }
 
 .section-subtitle {
-  margin: 0;
-  margin-bottom: 1.2rem;
+  margin: 0 0 1.2rem;
   color: var(--muted);
   font-family: system-ui, sans-serif;
 }
@@ -514,7 +503,8 @@ h2 {
   gap: 1rem;
 }
 
-.card {
+.card,
+.k2k-block {
   padding: 1rem 1.1rem;
   border-radius: calc(var(--radius-lg) - 4px);
   background: var(--cream-mid);
@@ -614,18 +604,23 @@ h2 {
   margin-top: 1.2rem;
 }
 
-/* ── Modal ────────────────────────────────────────────────── */
-.modal-overlay {
+/* ── Modal & Bean overlay backdrop (shared base) ─────────── */
+.modal-overlay,
+.overlay-backdrop {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(44,35,24,.45);
+  background: var(--overlay-scrim);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
+}
+
+.overlay-backdrop {
+  animation: beanFadeIn 0.15s ease;
 }
 
 .modal {
@@ -658,24 +653,35 @@ h2 {
   font-family: system-ui, sans-serif;
 }
 
-.modal-close {
+.modal-close,
+.overlay-close {
   appearance: none;
   background: var(--cream-mid);
   border: 1px solid var(--border-warm);
   color: var(--ink);
   border-radius: var(--radius-pill);
-  width: 38px;
-  height: 38px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
   line-height: 1;
   transition: background 0.15s, border-color 0.15s;
 }
 
-.modal-close:hover {
+.modal-close {
+  width: 38px;
+  height: 38px;
+  font-size: 1.2rem;
+}
+
+.overlay-close {
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+}
+
+.modal-close:hover,
+.overlay-close:hover {
   background: var(--yellow-soft);
   border-color: var(--yellow);
 }
@@ -723,13 +729,6 @@ h2 {
 .k2k-carousel-slide {
   flex: 0 0 var(--k2k-slide-width);
   transition: transform 220ms ease, box-shadow 220ms ease, opacity 220ms ease;
-}
-
-.k2k-block {
-  padding: 1rem 1.1rem;
-  border-radius: calc(var(--radius-lg) - 4px);
-  background: var(--cream-mid);
-  border: 1px solid var(--border);
 }
 
 .k2k-block h3 {
@@ -815,12 +814,14 @@ h2 {
   font: inherit;
 }
 
-.k2k-note-button:hover {
+.k2k-note-button:hover,
+.k2k-interval-button:hover {
   border-color: var(--border-warm);
   background: rgba(212,160,23,.07);
 }
 
-.k2k-note-button:focus-visible {
+.k2k-note-button:focus-visible,
+.k2k-interval-button:focus-visible {
   outline: 2px solid rgba(212,160,23,.75);
   outline-offset: 2px;
 }
@@ -922,10 +923,6 @@ h2 {
   -webkit-user-select: none;
   transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
-}
-
-.k2k-slider-frame.button-sliding .k2k-slider-track {
-  transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .k2k-slider-frame.button-resetting .k2k-slider-track {
@@ -1113,16 +1110,6 @@ h2 {
   appearance: none;
   cursor: pointer;
   font: inherit;
-}
-
-.k2k-interval-button:hover {
-  border-color: var(--border-warm);
-  background: rgba(212,160,23,.07);
-}
-
-.k2k-interval-button:focus-visible {
-  outline: 2px solid rgba(212,160,23,.75);
-  outline-offset: 2px;
 }
 
 .k2k-scale-notes-row {
@@ -1436,38 +1423,22 @@ h2 {
   margin-bottom: 0.75rem;
 }
 
-/* ── Bean list: show table OR cards by viewport ─────────── */
-.desktop-only {
-  display: block;
-}
-
 .mobile-only {
   display: none;
 }
 
+.desktop-only {
+  display: block;
+}
+
 .mobile-cards {
-  flex-direction: column;
+  display: grid;
   gap: 1rem;
 }
 
 .table-wrapper {
+  width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ── Bean overlay (reuses .modal-overlay backdrop pattern) ── */
-.overlay-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(44,35,24,.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1.25rem;
-  animation: beanFadeIn 0.15s ease;
 }
 
 @keyframes beanFadeIn {
@@ -1508,29 +1479,6 @@ h2 {
   font-weight: 700;
   font-style: italic;
   color: var(--ink);
-}
-
-/* Close button reuses .modal-close pattern */
-.overlay-close {
-  appearance: none;
-  background: var(--cream-mid);
-  border: 1px solid var(--border-warm);
-  color: var(--ink);
-  border-radius: var(--radius-pill);
-  width: 34px;
-  height: 34px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  line-height: 1;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.overlay-close:hover {
-  background: var(--yellow-soft);
-  border-color: var(--yellow);
 }
 
 .overlay-body {
@@ -1616,6 +1564,103 @@ h2 {
   font-family: system-ui, sans-serif;
 }
 
+.bean-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bean-table th,
+.bean-table td {
+  padding: 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.bean-table ul {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.bean-card {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(8px);
+}
+
+.bean-card-header {
+  margin-bottom: 1rem;
+}
+
+.bean-card-header h3 {
+  margin: 0.25rem 0 0;
+  font-size: 1.1rem;
+}
+
+.bean-id {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.bean-card-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.bean-card-label {
+  display: block;
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bean-card-section ul {
+  padding-left: 1rem;
+}
+
+.bean-card-section p,
+.bean-card-section ul,
+.bean-card-section .bean-tags {
+  margin: 0;
+}
+
+.bean-tags {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, max-content));
+  gap: 0.5rem;
+}
+
+@media (min-width: 420px) {
+  .bean-card-section {
+    grid-template-columns: 120px 1fr;
+    align-items: start;
+  }
+
+  .bean-card-label {
+    grid-column: 1;
+    margin-bottom: 0;
+  }
+}
+
+.bean-tag {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  font-size: 0.85rem;
+}
+
+.bean-card-edit {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 768px) {
   .app-header-inner  { gap: 0.75rem; }
@@ -1635,6 +1680,7 @@ h2 {
     --k2k-slide-gap: 0.7rem;
   }
 
+  
   /* Toolbar collapses to single column on mobile */
   .weather-music-toolbar {
     grid-template-columns: minmax(0, 1fr);
@@ -1668,7 +1714,7 @@ h2 {
   }
 
   .mobile-only {
-    display: flex;
+    display: grid;
   }
 }
 
@@ -2037,40 +2083,3 @@ h2 {
   gap: 0.5rem;
 }
 
-.bean-card-section {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.35rem;
-  margin-bottom: 1rem;
-}
-
-/* Label + content layout */
-.bean-card-label {
-  grid-column: 1 / -1;
-}
-
-/* Make content flexible */
-.bean-card-section p,
-.bean-card-section ul,
-.bean-card-section .bean-tags {
-  margin: 0;
-}
-
-.bean-tags {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, max-content));
-  gap: 0.5rem;
-}
-
-/* Responsive upgrade: allow multi-column layout when space allows */
-@media (min-width: 420px) {
-  .bean-card-section {
-    grid-template-columns: 120px 1fr;
-    align-items: start;
-  }
-
-  .bean-card-label {
-    grid-column: 1;
-    margin-bottom: 0;
-  }
-}

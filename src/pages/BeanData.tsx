@@ -1,6 +1,4 @@
-import { useState } from "react";
-import beansJson from "./beans.json";
-import { GITHUB_CONFIG , LOGIN_CONFIG } from './secrets';
+import { useState, useEffect } from "react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -86,6 +84,33 @@ const EMPTY_FORM: FormState = {
   greatOn: [],
 };
 
+// ---------------------------------------------------------------------------
+// Netlify DB config
+// ---------------------------------------------------------------------------
+
+// Your Netlify DB store name — change this to match what you created in the
+// Netlify dashboard (or via `netlify db:create`).
+const NETLIFY_DB_STORE = "beans";
+
+// Netlify DB REST base URL for the current site (injected at build time).
+// VITE_NETLIFY_DB_URL should be set in your Netlify environment variables and
+// in a local .env file, e.g.:
+//   VITE_NETLIFY_DB_URL=https://<site-id>.netlify.app/.netlify/functions/database
+const NETLIFY_DB_URL = import.meta.env.VITE_NETLIFY_DB_URL as string;
+
+// ---------------------------------------------------------------------------
+// Auth config (from Netlify environment variables)
+// ---------------------------------------------------------------------------
+
+// Set VITE_LOGIN_USERNAME and VITE_LOGIN_PASSWORD in your Netlify site's
+// environment variables (Site settings → Environment variables).
+// Also add them to a local .env file so `vite dev` works:
+//   VITE_LOGIN_USERNAME=yourUsername
+//   VITE_LOGIN_PASSWORD=yourPassword
+const LOGIN_CONFIG = {
+  username: import.meta.env.VITE_LOGIN_USERNAME as string,
+  password: import.meta.env.VITE_LOGIN_PASSWORD as string,
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -98,9 +123,7 @@ function beanToForm(bean: Bean): FormState {
     origin: bean.origin ?? "",
     datePurchased: bean.datePurchased ?? "",
     notes: Array.isArray(bean.notes) ? bean.notes.join(", ") : bean.notes ?? "",
-    greatOn: Array.isArray(bean.greatOn)
-      ? bean.greatOn
-      : [],
+    greatOn: Array.isArray(bean.greatOn) ? bean.greatOn : [],
   };
 }
 
@@ -115,71 +138,72 @@ function formToBean(form: FormState, id: number): Bean {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
-      greatOn: form.greatOn,
+    greatOn: form.greatOn,
   };
 }
 
 // ---------------------------------------------------------------------------
-// GitHub API
+// Netlify DB API helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Commits updated beans to GitHub by:
- *  1. Fetching the current file to get its SHA (required for updates).
- *  2. PUTting the new content with that SHA.
- *
- * Requires a fine-grained PAT with Contents: Read & Write on the target repo.
+ * Fetches all beans from the Netlify DB store.
+ * The store holds one key per bean, keyed by bean ID ("bean-{id}").
  */
-async function commitBeansToGitHub(
-  beans: Bean[],
-): Promise<void> {
-  const { owner, repo, path, token } = GITHUB_CONFIG;
-
-  if (!owner || !repo || !path || !token) {
+async function fetchBeansFromNetlify(): Promise<Bean[]> {
+  if (!NETLIFY_DB_URL) {
     throw new Error(
-      "GitHub config is incomplete. Open Settings and fill in all fields."
+      "VITE_NETLIFY_DB_URL is not set. Add it to your Netlify environment variables."
     );
   }
 
-  const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/vnd.github+json",
-    "Content-Type": "application/json",
-    "X-GitHub-Api-Version": "2022-11-28",
-  };
+  // List all keys in the store
+  const listRes = await fetch(
+    `${NETLIFY_DB_URL}/${NETLIFY_DB_STORE}?list=true`
+  );
+  if (!listRes.ok) {
+    throw new Error(`Failed to list beans: ${listRes.status}`);
+  }
 
-  // Step 1: get current SHA
-  const getRes = await fetch(apiBase, { headers });
-  if (!getRes.ok) {
-    const err = await getRes.json().catch(() => ({}));
+  const { keys }: { keys: string[] } = await listRes.json();
+
+  if (!keys || keys.length === 0) return [];
+
+  // Fetch each bean in parallel
+  const beans = await Promise.all(
+    keys.map(async (key) => {
+      const res = await fetch(`${NETLIFY_DB_URL}/${NETLIFY_DB_STORE}/${key}`);
+      if (!res.ok) return null;
+      const { value } = await res.json();
+      return JSON.parse(value) as Bean;
+    })
+  );
+
+  return (beans.filter(Boolean) as Bean[]).sort((a, b) => a.id - b.id);
+}
+
+/**
+ * Upserts a single bean into the Netlify DB store.
+ * Key format: "bean-{id}"
+ */
+async function saveBeanToNetlify(bean: Bean): Promise<void> {
+  if (!NETLIFY_DB_URL) {
     throw new Error(
-      `Failed to fetch current file from GitHub: ${getRes.status} ${
-        (err as { message?: string }).message ?? ""
-      }`
+      "VITE_NETLIFY_DB_URL is not set. Add it to your Netlify environment variables."
     );
   }
-  const { sha } = (await getRes.json()) as { sha: string };
 
-  // Step 2: encode new content
-  const newContent = JSON.stringify({ entries: beans }, null, 2);
-  const encoded = btoa(unescape(encodeURIComponent(newContent)));
-
-  // Step 3: commit
-  const putRes = await fetch(apiBase, {
+  const key = `bean-${bean.id}`;
+  const res = await fetch(`${NETLIFY_DB_URL}/${NETLIFY_DB_STORE}/${key}`, {
     method: "PUT",
-    headers,
-    body: JSON.stringify({
-      message: "chore: update beans.json via BeanData app",
-      content: encoded,
-      sha,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ value: JSON.stringify(bean) }),
   });
 
-  if (!putRes.ok) {
-    const err = await putRes.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
     throw new Error(
-      `GitHub commit failed: ${putRes.status} ${
+      `Failed to save bean: ${res.status} ${
         (err as { message?: string }).message ?? ""
       }`
     );
@@ -191,7 +215,12 @@ async function commitBeansToGitHub(
 // ---------------------------------------------------------------------------
 
 export const BeanData = () => {
-  const [beans, setBeans] = useState<Bean[]>(beansJson.entries);
+  const [beans, setBeans] = useState<Bean[]>([]);
+  const [loadStatus, setLoadStatus] = useState<"loading" | "ready" | "error">(
+    "loading"
+  );
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -201,13 +230,22 @@ export const BeanData = () => {
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
-
-  const [loginForm, setLoginForm] = useState({
-    username: "",
-    password: "",
-  });
-
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [loginError, setLoginError] = useState("");
+
+  // ---- load beans on mount ------------------------------------------------
+
+  useEffect(() => {
+    fetchBeansFromNetlify()
+      .then((data) => {
+        setBeans(data);
+        setLoadStatus("ready");
+      })
+      .catch((err) => {
+        setLoadError(err instanceof Error ? err.message : "Unknown error");
+        setLoadStatus("error");
+      });
+  }, []);
 
   // ---- form helpers -------------------------------------------------------
 
@@ -216,7 +254,6 @@ export const BeanData = () => {
       setLoginOpen(true);
       return;
     }
-  
     setEditingId(null);
     setForm(EMPTY_FORM);
     setErrors({});
@@ -230,7 +267,6 @@ export const BeanData = () => {
       setLoginOpen(true);
       return;
     }
-  
     setEditingId(bean.id);
     setForm(beanToForm(bean));
     setErrors({});
@@ -263,7 +299,6 @@ export const BeanData = () => {
   const handleGreatOnToggle = (method: string) => {
     setForm((prev) => {
       const exists = prev.greatOn.includes(method);
-  
       return {
         ...prev,
         greatOn: exists
@@ -281,18 +316,13 @@ export const BeanData = () => {
       setIsAuthenticated(true);
       setLoginOpen(false);
       setLoginError("");
-  
-      setLoginForm({
-        username: "",
-        password: "",
-      });
-  
+      setLoginForm({ username: "", password: "" });
       return;
     }
-  
     setLoginError("Invalid username or password.");
   };
-  // ---- submit (save locally + commit to GitHub) ---------------------------
+
+  // ---- submit (save to Netlify DB) ----------------------------------------
 
   const handleSubmit = async () => {
     const e = validate();
@@ -301,73 +331,44 @@ export const BeanData = () => {
       return;
     }
 
-    // Compute next beans state
-    let nextBeans: Bean[];
-
-    setBeans((prev) => {
-      if (editingId !== null) {
-        nextBeans = prev.map((b) =>
-          b.id === editingId ? formToBean(form, editingId) : b
-        );
-        return nextBeans;
-      }
-
-      const match = prev.find(
-        (b) =>
-          b.roaster.toLowerCase() === form.roaster.trim().toLowerCase() &&
-          b.name.toLowerCase() === form.name.trim().toLowerCase()
-      );
-
-      if (match) {
-        nextBeans = prev.map((b) =>
-          b.id === match.id ? formToBean(form, match.id) : b
-        );
-        return nextBeans;
-      }
-
-      const newId =
-        prev.length > 0 ? Math.max(...prev.map((b) => b.id)) + 1 : 1;
-      nextBeans = [...prev, formToBean(form, newId)];
-      return nextBeans;
-    });
-
-    // Commit to GitHub
     setSaveStatus("saving");
     setSaveError(null);
 
     try {
-      // nextBeans is set synchronously above before the setState callback
-      // resolves, so we recompute from current beans + the new entry here.
-      const currentBeans = beans;
-      let committed: Bean[];
+      let beanToSave: Bean;
 
       if (editingId !== null) {
-        committed = currentBeans.map((b) =>
-          b.id === editingId ? formToBean(form, editingId) : b
+        // Editing an existing bean
+        beanToSave = formToBean(form, editingId);
+        setBeans((prev) =>
+          prev.map((b) => (b.id === editingId ? beanToSave : b))
         );
       } else {
-        const match = currentBeans.find(
+        // Check for a duplicate roaster + name
+        const match = beans.find(
           (b) =>
             b.roaster.toLowerCase() === form.roaster.trim().toLowerCase() &&
             b.name.toLowerCase() === form.name.trim().toLowerCase()
         );
+
         if (match) {
-          committed = currentBeans.map((b) =>
-            b.id === match.id ? formToBean(form, match.id) : b
+          // Update the existing entry instead of creating a duplicate
+          beanToSave = formToBean(form, match.id);
+          setBeans((prev) =>
+            prev.map((b) => (b.id === match.id ? beanToSave : b))
           );
         } else {
+          // Brand-new entry — assign the next available ID
           const newId =
-            currentBeans.length > 0
-              ? Math.max(...currentBeans.map((b) => b.id)) + 1
-              : 1;
-          committed = [...currentBeans, formToBean(form, newId)];
+            beans.length > 0 ? Math.max(...beans.map((b) => b.id)) + 1 : 1;
+          beanToSave = formToBean(form, newId);
+          setBeans((prev) => [...prev, beanToSave]);
         }
       }
 
-      await commitBeansToGitHub(committed);
+      await saveBeanToNetlify(beanToSave);
       setSaveStatus("saved");
 
-      // Close overlay after brief success flash
       setTimeout(() => {
         closeOverlay();
       }, 900);
@@ -379,7 +380,8 @@ export const BeanData = () => {
 
   // ---- derived labels -----------------------------------------------------
 
-  const overlayTitle = editingId !== null ? "Edit Coffee Entry" : "Add New Coffee";
+  const overlayTitle =
+    editingId !== null ? "Edit Coffee Entry" : "Add New Coffee";
 
   const submitLabel = () => {
     if (saveStatus === "saving") return "Saving…";
@@ -416,8 +418,8 @@ export const BeanData = () => {
       <section className="section">
         <h2>The database</h2>
         <p>
-          I'm using a simple JSON file to store the data. Here is a table with
-          the contents of the file.
+          I'm using Netlify DB to store the data. Here is a table with the
+          contents of the database.
         </p>
 
         <div className="table-toolbar">
@@ -426,10 +428,7 @@ export const BeanData = () => {
           </button>
 
           {!isAuthenticated ? (
-            <button
-              className="btn ghost"
-              onClick={() => setLoginOpen(true)}
-            >
+            <button className="btn ghost" onClick={() => setLoginOpen(true)}>
               Login
             </button>
           ) : (
@@ -437,58 +436,135 @@ export const BeanData = () => {
           )}
         </div>
 
-        <table className="bean-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Roaster</th>
-              <th>Name</th>
-              <th>Origin</th>
-              <th>Date Purchased</th>
-              <th>Notes</th>
-              <th>Great On</th>
-              {isAuthenticated && <th>Edit</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {beans.map((bean) => (
-              <tr key={bean.id}>
-                <td>{bean.id}</td>
-                <td>{bean.roaster}</td>
-                <td>{bean.name}</td>
-                <td>{bean.origin}</td>
-                <td>{bean.datePurchased}</td>
-                <td>
-                  <ul>
-                    {bean.notes.map((note) => (
-                      <li key={note}>{note}</li>
-                    ))}
-                  </ul>
-                </td>
-                <td>
-                  <ul>
-                    {bean.greatOn.map((method) => (
-                      <li key={method}>{method}</li>
-                    ))}
-                  </ul>
-                </td>
-                {isAuthenticated && (
-                  <td>
+        {/* Loading / error states */}
+        {loadStatus === "loading" && (
+          <p className="load-status">Loading beans…</p>
+        )}
+        {loadStatus === "error" && (
+          <p className="overlay-error">✕ Failed to load beans: {loadError}</p>
+        )}
+
+        {loadStatus === "ready" && (
+          <div className="bean-data-display">
+            {/* Desktop table */}
+            <div className="table-wrapper desktop-only">
+              <table className="bean-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Roaster</th>
+                    <th>Name</th>
+                    <th>Origin</th>
+                    <th>Date Purchased</th>
+                    <th>Notes</th>
+                    <th>Great On</th>
+                    {isAuthenticated && <th>Edit</th>}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {beans.map((bean) => (
+                    <tr key={bean.id}>
+                      <td>{bean.id}</td>
+                      <td>{bean.roaster}</td>
+                      <td>{bean.name}</td>
+                      <td>{bean.origin}</td>
+                      <td>{bean.datePurchased}</td>
+                      <td>
+                        <ul>
+                          {bean.notes.map((note) => (
+                            <li key={note}>{note}</li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td>
+                        <ul>
+                          {bean.greatOn.map((method) => (
+                            <li key={method}>{method}</li>
+                          ))}
+                        </ul>
+                      </td>
+                      {isAuthenticated && (
+                        <td>
+                          <button
+                            className="btn btn-edit"
+                            onClick={() => openEdit(bean)}
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="mobile-cards mobile-only">
+              {beans.map((bean) => (
+                <article className="bean-card" key={bean.id}>
+                  <div className="bean-card-header">
+                    <span className="bean-id">#{bean.id}</span>
+                    <h3>
+                      {bean.roaster} · {bean.name}
+                    </h3>
+                  </div>
+
+                  <div className="bean-card-section">
+                    <span className="bean-card-label">Origin</span>
+                    <p>{bean.origin || "—"}</p>
+                  </div>
+
+                  <div className="bean-card-section">
+                    <span className="bean-card-label">Purchased</span>
+                    <p>{bean.datePurchased || "—"}</p>
+                  </div>
+
+                  <div className="bean-card-section">
+                    <span className="bean-card-label">Notes</span>
+                    {bean.notes.length > 0 ? (
+                      <ul>
+                        {bean.notes.map((note) => (
+                          <li key={note}>{note}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>—</p>
+                    )}
+                  </div>
+
+                  <div className="bean-card-section">
+                    <span className="bean-card-label">Great On</span>
+                    {bean.greatOn.length > 0 ? (
+                      <div className="bean-tags">
+                        {bean.greatOn.map((method) => (
+                          <span className="bean-tag" key={method}>
+                            {method}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>—</p>
+                    )}
+                  </div>
+
+                  {isAuthenticated && (
                     <button
-                      className="btn btn-edit"
+                      className="btn btn-edit bean-card-edit"
                       onClick={() => openEdit(bean)}
                     >
                       Edit
                     </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  )}
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* ── Add / Edit overlay ───────────────────────────────────────────── */}
+      {/* ── Add / Edit overlay ─────────────────────────────────────────── */}
       {overlayOpen && (
         <div className="overlay-backdrop" onClick={closeOverlay}>
           <div
@@ -500,7 +576,11 @@ export const BeanData = () => {
           >
             <div className="overlay-header">
               <h3>{overlayTitle}</h3>
-              <button className="overlay-close" onClick={closeOverlay} aria-label="Close">
+              <button
+                className="overlay-close"
+                onClick={closeOverlay}
+                aria-label="Close"
+              >
                 ✕
               </button>
             </div>
@@ -538,26 +618,25 @@ export const BeanData = () => {
                 placeholder="Comma-separated, e.g. chocolate, fruity, floral"
                 hint="Tasting notes from the roaster."
               />
+
               <div className="field">
-              <label className="field-label">Great On</label>
-
-              <div className="checkbox-group">
-                {BREW_METHODS.map((method) => (
-                  <label key={method} className="checkbox-option">
-                    <input
-                      type="checkbox"
-                      checked={form.greatOn.includes(method)}
-                      onChange={() => handleGreatOnToggle(method)}
-                    />
-                    <span>{method}</span>
-                  </label>
-                ))}
+                <label className="field-label">Great On</label>
+                <div className="checkbox-group">
+                  {BREW_METHODS.map((method) => (
+                    <label key={method} className="checkbox-option">
+                      <input
+                        type="checkbox"
+                        checked={form.greatOn.includes(method)}
+                        onChange={() => handleGreatOnToggle(method)}
+                      />
+                      <span>{method}</span>
+                    </label>
+                  ))}
+                </div>
+                <span className="field-hint">
+                  Which methods did you really like it as?
+                </span>
               </div>
-
-              <span className="field-hint">
-                Which methods did you really like it as?
-              </span>
-            </div>
 
               {editingId === null && (
                 <p className="overlay-hint">
@@ -587,82 +666,64 @@ export const BeanData = () => {
         </div>
       )}
 
-{loginOpen && (
-  <div
-    className="overlay-backdrop"
-    onClick={() => setLoginOpen(false)}
-  >
-    <div
-      className="overlay-panel"
-      onClick={(e) => e.stopPropagation()}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Login"
-    >
-      <div className="overlay-header">
-        <h3>Login</h3>
+      {/* ── Login overlay ──────────────────────────────────────────────── */}
+      {loginOpen && (
+        <div className="overlay-backdrop" onClick={() => setLoginOpen(false)}>
+          <div
+            className="overlay-panel"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Login"
+          >
+            <div className="overlay-header">
+              <h3>Login</h3>
+              <button
+                className="overlay-close"
+                onClick={() => setLoginOpen(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
 
-        <button
-          className="overlay-close"
-          onClick={() => setLoginOpen(false)}
-          aria-label="Close"
-        >
-          ✕
-        </button>
-      </div>
+            <div className="overlay-body">
+              <Field
+                label="Username"
+                value={loginForm.username}
+                onChange={(v) =>
+                  setLoginForm((p) => ({ ...p, username: v }))
+                }
+                required
+              />
+              <Field
+                label="Password"
+                type="password"
+                value={loginForm.password}
+                onChange={(v) =>
+                  setLoginForm((p) => ({ ...p, password: v }))
+                }
+                required
+              />
+              {loginError && (
+                <p className="overlay-error">✕ {loginError}</p>
+              )}
+            </div>
 
-      <div className="overlay-body">
-        <Field
-          label="Username"
-          value={loginForm.username}
-          onChange={(v) =>
-            setLoginForm((p) => ({
-              ...p,
-              username: v,
-            }))
-          }
-          required
-        />
-
-        <Field
-          label="Password"
-          type="password"
-          value={loginForm.password}
-          onChange={(v) =>
-            setLoginForm((p) => ({
-              ...p,
-              password: v,
-            }))
-          }
-          required
-        />
-
-        {loginError && (
-          <p className="overlay-error">
-            ✕ {loginError}
-          </p>
-        )}
-      </div>
-
-      <div className="overlay-footer">
-        <button
-          className="btn btn-cancel"
-          onClick={() => setLoginOpen(false)}
-        >
-          Cancel
-        </button>
-
-        <button
-          className="btn btn-submit"
-          onClick={handleLogin}
-        >
-          Login
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-      
+            <div className="overlay-footer">
+              <button
+                className="btn btn-cancel"
+                onClick={() => setLoginOpen(false)}
+              >
+                Cancel
+              </button>
+              <button className="btn btn-submit" onClick={handleLogin}>
+                Login
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

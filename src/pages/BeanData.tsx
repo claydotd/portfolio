@@ -163,7 +163,13 @@ async function fetchBeansFromNetlify(): Promise<Bean[]> {
     )}&list=true`
   );
   if (!listRes.ok) {
-    throw new Error(`Failed to list beans: ${listRes.status}`);
+    const errBody = await listRes.json().catch(() => ({}));
+    const detail = (errBody as { message?: string }).message;
+    throw new Error(
+      detail?.trim()
+        ? detail
+        : `Failed to list beans: ${listRes.status}`
+    );
   }
 
   const { keys }: { keys: string[] } = await listRes.json();

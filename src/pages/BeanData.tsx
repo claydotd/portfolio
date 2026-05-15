@@ -10,6 +10,8 @@ interface Bean {
   roaster: string;
   name: string;
   origin: string;
+  varietal: string;
+  process: string;
   datePurchased: string;
   notes: string[];
   greatOn: string[];
@@ -19,6 +21,8 @@ interface FormState {
   roaster: string;
   name: string;
   origin: string;
+  varietal: string;
+  process: string;
   datePurchased: string;
   notes: string;
   greatOn: string[];
@@ -80,6 +84,8 @@ const EMPTY_FORM: FormState = {
   roaster: "",
   name: "",
   origin: "",
+  varietal: "",
+  process: "",
   datePurchased: "",
   notes: "",
   greatOn: [],
@@ -110,6 +116,8 @@ function beanToForm(bean: Bean): FormState {
     roaster: bean.roaster ?? "",
     name: bean.name ?? "",
     origin: bean.origin ?? "",
+    varietal: bean.varietal ?? "",
+    process: bean.process ?? "",
     datePurchased: bean.datePurchased ?? "",
     notes: Array.isArray(bean.notes) ? bean.notes.join(", ") : bean.notes ?? "",
     greatOn: Array.isArray(bean.greatOn) ? bean.greatOn : [],
@@ -122,6 +130,8 @@ function formToBean(form: FormState, id: number): Bean {
     roaster: form.roaster.trim(),
     name: form.name.trim(),
     origin: form.origin.trim(),
+    varietal: form.varietal.trim(),
+    process: form.process.trim(),
     datePurchased: form.datePurchased.trim(),
     notes: form.notes
       .split(",")
@@ -479,7 +489,9 @@ export const BeanData = () => {
                     <th>Roaster</th>
                     <th>Name</th>
                     <th>Origin</th>
-                    <th>Date Purchased</th>
+                    <th>Varietal</th>
+                    <th>Process</th>
+                    <th>Date</th>
                     <th>Notes</th>
                     <th>Great As</th>
                     {isAuthenticated && <th>Edit</th>}
@@ -493,6 +505,8 @@ export const BeanData = () => {
                       <td>{bean.roaster}</td>
                       <td>{bean.name}</td>
                       <td>{bean.origin}</td>
+                      <td>{bean.varietal}</td>
+                      <td>{bean.process}</td>
                       <td>{bean.datePurchased}</td>
                       <td>
                         <ul>
@@ -541,7 +555,17 @@ export const BeanData = () => {
                   </div>
 
                   <div className="bean-card-section">
-                    <span className="bean-card-label">Purchased</span>
+                    <span className="bean-card-label">Varietal</span>
+                    <p>{bean.varietal}</p>
+                  </div>
+
+                  <div className="bean-card-section">
+                    <span className="bean-card-label">Process</span>
+                    <p>{bean.process || "—"}</p>
+                  </div>
+
+                  <div className="bean-card-section">
+                    <span className="bean-card-label">Date</span>
                     <p>{bean.datePurchased || "—"}</p>
                   </div>
 
@@ -631,7 +655,21 @@ export const BeanData = () => {
                 onChange={(v) => handleChange("origin", v)}
               />
               <Field
-                label="Date Purchased"
+                label="Varietal"
+                value={form.varietal}
+                onChange={(v) => handleChange("varietal", v)}
+                placeholder="Paraneima, Bourbon, etc."
+                hint="The coffee plant variety."
+              />
+              <Field
+                label="Process"
+                value={form.process}
+                onChange={(v) => handleChange("process", v)}
+                placeholder="Washed, Anerobic Honey, etc..."
+                hint="How the beans are processed."
+              />
+              <Field
+                label="Date"
                 type="date"
                 value={form.datePurchased}
                 onChange={(v) => handleChange("datePurchased", v)}

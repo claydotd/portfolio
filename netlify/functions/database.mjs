@@ -63,6 +63,8 @@ function rowToBean(row) {
     roaster: row.roaster ?? "",
     name: row.name ?? "",
     origin: row.origin ?? "",
+    varietal: row.varietal ?? "",
+    process: row.process ?? "",
     datePurchased: formatDate(row.date_purchased),
     notes: Array.isArray(row.notes) ? row.notes : row.notes ?? [],
     greatOn: Array.isArray(row.great_on) ? row.great_on : row.great_on ?? [],
@@ -114,7 +116,7 @@ export const handler = async (event) => {
 
     if (event.httpMethod === "GET") {
       const rows =
-        await db.sql`SELECT id, roaster, name, origin, date_purchased, notes, great_on FROM beans WHERE id = ${id}`;
+        await db.sql`SELECT id, roaster, name, origin, varietal, process, date_purchased, notes, great_on FROM beans WHERE id = ${id}`;
       if (!rows.length) {
         return json(404, { message: "Not found" });
       }
@@ -130,12 +132,14 @@ export const handler = async (event) => {
       const greatOnJson = JSON.stringify(bean.greatOn ?? []);
 
       await db.pool.query(
-        `INSERT INTO beans (id, roaster, name, origin, date_purchased, notes, great_on)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+        `INSERT INTO beans (id, roaster, name, origin, varietal, process, date_purchased, notes, great_on)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb)
          ON CONFLICT (id) DO UPDATE SET
            roaster = EXCLUDED.roaster,
            name = EXCLUDED.name,
            origin = EXCLUDED.origin,
+           varietal = EXCLUDED.varietal,
+           process = EXCLUDED.process,
            date_purchased = EXCLUDED.date_purchased,
            notes = EXCLUDED.notes,
            great_on = EXCLUDED.great_on`,
@@ -144,6 +148,8 @@ export const handler = async (event) => {
           bean.roaster ?? "",
           bean.name ?? "",
           bean.origin ?? "",
+          bean.varietal ?? "",
+          bean.process ?? "",
           bean.datePurchased || null,
           notesJson,
           greatOnJson,

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { BeanDashboard } from "../components/BeanDashboard";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,14 +51,14 @@ const BEAN_DATA_PLAN = [
     title: "Create an interface to add new purchases and add review notes",
     description:
       "Next, I want to dynamically add new roasts to the database and add review notes.",
-    status: "in progress",
+    status: "done",
   },
   {
     id: 3,
     title: "Create a dashboard to visualise the data",
     description:
       "After that, I'll be creating an overview dashboard to visualise the data. This will include filtering and dynamically updating visuals.",
-    status: "not started",
+    status: "done",
   },
   {
     id: 4,
@@ -88,25 +89,13 @@ const EMPTY_FORM: FormState = {
 // Netlify DB config
 // ---------------------------------------------------------------------------
 
-// Your Netlify DB store name — change this to match what you created in the
-// Netlify dashboard (or via `netlify db:create`).
 const NETLIFY_DB_STORE = "production";
-
-// Netlify DB REST base URL for the serverless function (no trailing slash).
-// VITE_NETLIFY_DB_URL in Netlify env vars and local .env, e.g.:
-//   VITE_NETLIFY_DB_URL=https://<your-site>.netlify.app/.netlify/functions/database
-// The app calls this URL with ?store=…&list=true or ?store=…&key=bean-{id}.
 const NETLIFY_DB_URL = import.meta.env.VITE_NETLIFY_DB_URL as string;
 
 // ---------------------------------------------------------------------------
 // Auth config (from Netlify environment variables)
 // ---------------------------------------------------------------------------
 
-// Set VITE_LOGIN_USERNAME and VITE_LOGIN_PASSWORD in your Netlify site's
-// environment variables (Site settings → Environment variables).
-// Also add them to a local .env file so `vite dev` works:
-//   VITE_LOGIN_USERNAME=yourUsername
-//   VITE_LOGIN_PASSWORD=yourPassword
 const LOGIN_CONFIG = {
   username: import.meta.env.VITE_LOGIN_USERNAME as string,
   password: import.meta.env.VITE_LOGIN_PASSWORD as string,
@@ -153,7 +142,7 @@ function formToBean(form: FormState, id: number): Bean {
 async function fetchBeansFromNetlify(): Promise<Bean[]> {
   if (!NETLIFY_DB_URL) {
     throw new Error(
-      "VITE_NETLIFY_DB_URL is not set. Add it to your Netlify environment variables."
+      "Cannot connect to database."
     );
   }
 
@@ -248,6 +237,7 @@ export const BeanData = () => {
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [loginError, setLoginError] = useState("");
+  const [showDatabase, setShowDatabase] = useState(false);
 
   // ---- load beans on mount ------------------------------------------------
 
@@ -406,7 +396,7 @@ export const BeanData = () => {
     return editingId !== null ? "Save Changes" : "Add Coffee";
   };
 
-  // ---- render -------------------------------------------------------------
+  // ---- render page --------------------------------------------------------
 
   return (
     <section className="page">
@@ -430,8 +420,26 @@ export const BeanData = () => {
           </ol>
         </div>
       </header>
-
-      <section className="section">
+      <section className="section section--dashboard">
+        <h2>Data Dashboard</h2>
+        <p className="section-subtitle">
+          Explore patterns in the data! I'm using this to try and find any patterns in coffee preferences. You can see the data below, and add to the database if I've given you the credentials.
+        </p>
+        <BeanDashboard beans={beans} loadStatus={loadStatus} />
+        <div className="dashboard-reveal">
+          <button
+            type="button"
+            className="btn primary dashboard-reveal__btn"
+            onClick={() => setShowDatabase(true)}
+            disabled={showDatabase}
+            aria-expanded={showDatabase}
+          >
+            {showDatabase ? "Database below" : "Show me the data"}
+          </button>
+        </div>
+      </section>
+      {showDatabase && (
+      <section className="section section--database bean-database-reveal">
         <h2>The database</h2>
         <p>
           I'm using Netlify DB to store the data. Here is a table with the
@@ -473,7 +481,7 @@ export const BeanData = () => {
                     <th>Origin</th>
                     <th>Date Purchased</th>
                     <th>Notes</th>
-                    <th>Great On</th>
+                    <th>Great As</th>
                     {isAuthenticated && <th>Edit</th>}
                   </tr>
                 </thead>
@@ -551,7 +559,7 @@ export const BeanData = () => {
                   </div>
 
                   <div className="bean-card-section">
-                    <span className="bean-card-label">Great On</span>
+                    <span className="bean-card-label">Great As</span>
                     {bean.greatOn.length > 0 ? (
                       <div className="bean-tags">
                         {bean.greatOn.map((method) => (
@@ -579,6 +587,7 @@ export const BeanData = () => {
           </div>
         )}
       </section>
+      )}
 
       {/* ── Add / Edit overlay ─────────────────────────────────────────── */}
       {overlayOpen && (
@@ -636,7 +645,7 @@ export const BeanData = () => {
               />
 
               <div className="field">
-                <label className="field-label">Great On</label>
+                <label className="field-label">Great As</label>
                 <div className="checkbox-group">
                   {BREW_METHODS.map((method) => (
                     <label key={method} className="checkbox-option">
@@ -650,7 +659,7 @@ export const BeanData = () => {
                   ))}
                 </div>
                 <span className="field-hint">
-                  Which methods did you really like it as?
+                  Which methods made a <span style={{ fontStyle: "italic" }}> great</span> cup of coffee?
                 </span>
               </div>
 

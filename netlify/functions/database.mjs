@@ -96,7 +96,16 @@ export const handler = async (event) => {
     return json(503, { message: msg });
   }
 
+  const allRequested = qs.all === "true";
+
   try {
+    if (event.httpMethod === "GET" && allRequested) {
+      const rows =
+        await db.sql`SELECT id, roaster, name, origin, varietal, process, date_purchased, notes, great_on FROM beans ORDER BY id ASC`;
+      const beans = rows.map(rowToBean);
+      return json(200, { beans });
+    }
+
     if (event.httpMethod === "GET" && listRequested) {
       const rows = await db.sql`SELECT id FROM beans ORDER BY id ASC`;
       const keys = rows.map((r) => `bean-${r.id}`);

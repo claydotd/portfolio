@@ -95,8 +95,7 @@ const EMPTY_FORM: FormState = {
 // Netlify DB config
 // ---------------------------------------------------------------------------
 
-const NETLIFY_DB_STORE = "production";
-const NETLIFY_DB_URL = import.meta.env.VITE_NETLIFY_DB_URL as string;
+const NETLIFY_DB_URL = "/.netlify/functions/database";
 
 // ---------------------------------------------------------------------------
 // Auth config (from Netlify environment variables)
@@ -150,46 +149,20 @@ function formToBean(form: FormState, id: number): Bean {
  * The store holds one key per bean, keyed by bean ID ("bean-{id}").
  */
 async function fetchBeansFromNetlify(): Promise<Bean[]> {
-  if (!NETLIFY_DB_URL) {
-    throw new Error(
-      "Cannot connect to database."
-    );
-  }
-
-  const listRes = await fetch(
-    `${NETLIFY_DB_URL}?store=${encodeURIComponent(
-      NETLIFY_DB_STORE
-    )}&list=true`
-  );
-  if (!listRes.ok) {
-    const errBody = await listRes.json().catch(() => ({}));
+  const res = await fetch(`${NETLIFY_DB_URL}?all=true`);
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
     const detail = (errBody as { message?: string }).message;
     throw new Error(
       detail?.trim()
         ? detail
-        : `Failed to list beans: ${listRes.status}`
+        : `Failed to fetch beans: ${res.status}`
     );
   }
 
-  const { keys }: { keys: string[] } = await listRes.json();
+  const { beans }: { beans: Bean[] } = await res.json();
 
-  if (!keys || keys.length === 0) return [];
-
-  // Fetch each bean in parallel
-  const beans = await Promise.all(
-    keys.map(async (key) => {
-      const res = await fetch(
-        `${NETLIFY_DB_URL}?store=${encodeURIComponent(
-          NETLIFY_DB_STORE
-        )}&key=${encodeURIComponent(key)}`
-      );
-      if (!res.ok) return null;
-      const { value } = await res.json();
-      return JSON.parse(value) as Bean;
-    })
-  );
-
-  return (beans.filter(Boolean) as Bean[]).sort((a, b) => a.id - b.id);
+  return beans ?? [];
 }
 
 /**
@@ -197,17 +170,9 @@ async function fetchBeansFromNetlify(): Promise<Bean[]> {
  * Key format: "bean-{id}"
  */
 async function saveBeanToNetlify(bean: Bean): Promise<void> {
-  if (!NETLIFY_DB_URL) {
-    throw new Error(
-      "VITE_NETLIFY_DB_URL is not set. Add it to your Netlify environment variables."
-    );
-  }
-
   const key = `bean-${bean.id}`;
   const res = await fetch(
-    `${NETLIFY_DB_URL}?store=${encodeURIComponent(
-      NETLIFY_DB_STORE
-    )}&key=${encodeURIComponent(key)}`,
+    `${NETLIFY_DB_URL}?key=${encodeURIComponent(key)}`,
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

@@ -4,6 +4,7 @@ import { Home } from "./pages/Home";
 import { About } from "./pages/About";
 import { WeatherMusic } from "./pages/WeatherMusic";
 import { BeanData } from "./pages/BeanData";
+import {TodoListPractice} from "./pages/ReactPractice";
 // import { MusicPracticePal } from "./pages/MusicPracticePal";
 // import { KeyToKeySignatures } from "./pages/applets/KeyToKeySignatures";
 // import { IntervalInspector } from "./pages/applets/IntervalInspector";
@@ -20,6 +21,7 @@ export const App = () => {
         <Route path="/about" element={<About />} />
         <Route path="/weather-music" element={<WeatherMusic />} />
         <Route path="/bean-data" element={<BeanData />} />
+        <Route path="/react-practice" element={<TodoListPractice />} />
         {/* <Route path="/music-practice-pal" element={<MusicPracticePal />} />
         <Route path="/music-practice-pal/key-to-key-signatures" element={<KeyToKeySignatures />} />
         <Route path="/music-practice-pal/interval-inspector" element={<IntervalInspector />} />

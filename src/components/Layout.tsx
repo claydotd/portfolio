@@ -58,6 +58,14 @@ export const Layout = ({ children }: LayoutProps) => {
             >
               Weather Music
             </NavLink>
+            <NavLink
+              to="/react-practice"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              React Practice
+            </NavLink>
           </nav>
 
           {/* Mobile menu button */}
@@ -137,6 +145,15 @@ export const Layout = ({ children }: LayoutProps) => {
             }
           >
             Weather Music
+          </NavLink>
+          <NavLink
+            to="/react-practice"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              isActive ? "mobile-nav-link active" : "mobile-nav-link"
+            }
+          >
+            React Practice
           </NavLink>
         </nav>
       </aside>

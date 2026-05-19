@@ -684,23 +684,14 @@ export const BeanData = () => {
   return (
     <section className="page">
       <header className="hero">
-        <p className="pill">BeanData · Coffee Bean Data Visualisation</p>
-        <h1>Bean Data</h1>
-        <p className="subtitle">
-          This project is all about visualising data from my coffee bean
-          purchases. I'm using this project to experiment with data
-          visualisation.
-        </p>
-        <div>
-          <p>The plan:</p>
-          <ol>
-            {BEAN_DATA_PLAN.map((item) => (
-              <li key={item.id}>
-                <span className="pill">{item.status}</span>
-                <strong>{item.title}:</strong> {item.description}
-              </li>
-            ))}
-          </ol>
+        <div className="hero-left">
+          <p className="pill">BeanData · Coffee Bean Data Visualisation</p>
+          <h1>Bean Data</h1>
+          <p className="subtitle">
+            This project is all about visualising data from my coffee bean
+            purchases. I'm using this project to experiment with data
+            visualisation.
+          </p>
         </div>
       </header>
 

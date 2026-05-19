@@ -918,12 +918,14 @@ useEffect(() => {
   return (
     <section className="page">
       <header className="hero">
-        <p className="pill">Project · Weather-driven step sequencer</p>
-        <h1>Weather Music</h1>
-        <p className="subtitle">
-          A 16-step sequencer where the sound and note for each step is set by one day of weather data. Use your location or choose a location, then see what the forecast sounds like!
-        </p>
-        <p> Please note that the 16-day forecast OpenWeatherMap API doesn't currently work at the minute because I don't have a subscription... Please enjoy playing around with the 8-day forecast though!</p>
+        <div className="hero-left">
+          <p className="pill">Project · Weather-driven step sequencer</p>
+          <h1>Weather Music</h1>
+          <p className="subtitle">
+            A 16-step sequencer where the sound and note for each step is set by one day of weather data. Use your location or choose a location, then see what the forecast sounds like!
+          </p>
+          <p> Please note that the 16-day forecast OpenWeatherMap API doesn't currently work at the minute because I don't have a subscription... Please enjoy playing around with the 8-day forecast though!</p>
+        </div>
       </header>
 
       <section className="section weather-music-panel">

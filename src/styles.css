@@ -2775,3 +2775,213 @@ table.heatmap { display: none; }
   gap: 0.5rem;
 }
 
+/* ── Column header filter buttons ─────────────────────────────────── */
+
+.col-th {
+  padding: 0;
+  position: relative;
+}
+
+.col-th--active th,
+.col-th--active {
+  background-color: var(--color-accent, #f5f0e8); /* adapt to your theme */
+}
+
+.col-th-btn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.col-th-btn:hover,
+.col-th-btn--open {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.col-th-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  opacity: 0.6;
+}
+
+.col-sort-indicator {
+  font-size: 0.8rem;
+  opacity: 1;
+}
+
+.col-filter-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.8;
+}
+
+.col-th-chevron {
+  font-size: 0.55rem;
+  opacity: 0.5;
+}
+
+/* ── Filter panel (floating) ──────────────────────────────────────── */
+
+.col-filter-panel {
+  z-index: 200;
+  min-width: 200px;
+  max-width: 280px;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  animation: filterPanelIn 0.15s ease;
+}
+
+@keyframes filterPanelIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.col-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+}
+
+.col-filter-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.col-filter-close {
+  all: unset;
+  cursor: pointer;
+  font-size: 0.75rem;
+  opacity: 0.5;
+  padding: 0.1rem 0.25rem;
+  border-radius: 4px;
+}
+
+.col-filter-close:hover {
+  opacity: 1;
+  background: rgba(0,0,0,0.06);
+}
+
+.col-filter-section {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+}
+
+.col-filter-section:last-of-type {
+  border-bottom: none;
+}
+
+.col-filter-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.5;
+  margin: 0 0 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.col-filter-count {
+  background: var(--color-accent, #e8e0d5);
+  border-radius: 99px;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.65rem;
+  opacity: 1;
+  font-weight: 600;
+}
+
+.col-filter-sort-btns {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.col-filter-sort-btn {
+  all: unset;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #e0e0e0);
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.col-filter-sort-btn:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+.col-filter-sort-btn.active {
+  background: var(--color-fg, #1a1a1a);
+  color: var(--color-bg, #fff);
+  border-color: var(--color-fg, #1a1a1a);
+}
+
+.col-filter-values {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.col-filter-value-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.15rem 0;
+}
+
+.col-filter-value-row input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.col-filter-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--color-border, #e0e0e0);
+}
+
+/* ── Small button variant ─────────────────────────────────────────── */
+
+.btn.small {
+  font-size: 0.78rem;
+  padding: 0.3rem 0.65rem;
+}
+
+/* ── Clear-all filter button in toolbar ──────────────────────────── */
+
+.col-filter-clear-all {
+  margin-left: auto;
+}
+
+/* ── No-results row ───────────────────────────────────────────────── */
+
+.no-results {
+  padding: 1.5rem;
+  text-align: center;
+  opacity: 0.5;
+  font-style: italic;
+}

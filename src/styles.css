@@ -96,6 +96,7 @@ a {
   gap: 1rem;
 }
 
+
 /* ── Brand pill ───────────────────────────────────────────── */
 .brand {
   display: inline-flex;
@@ -164,8 +165,41 @@ a {
 }
 
 .hero {
-  margin-top: 1.2rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 300px;
 }
+
+.hero-left {
+  max-width: 600px;
+  z-index: 2;
+}
+
+.hero-right {
+  position: absolute;
+  right: 0;
+  bottom: -175px; /* pushes image into next section */
+  z-index: -1;
+}
+
+.hero-picture {
+  width: 400px;
+  height: auto;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hero-picture {
+    width: 280px;
+  }
+}
+
 
 /* ── Pill badge ───────────────────────────────────────────── */
 .pill {

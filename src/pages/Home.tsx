@@ -1,23 +1,37 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ContactModal } from "../components/ContactModal";
+import clay from "./clay.png";
+import clay2 from "./clay2.png";
+import clay3 from "./clay3.png";
 
-export const Home = () => {
-  const CONTACT_EMAIL = "claydleslie@icloud.com";
-  const [isContactOpen, setIsContactOpen] = useState(false);
+function Hero() {
+  const images = [clay, clay2, clay3];
+
+  const [currentImage, setCurrentImage] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % images.length);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <section className="page">
       <div className="hero">
-        <p className="pill">Welcome to my portfolio</p>
-        <h1>
-          Hi, I&apos;m <span className="accent">Clay</span>.
-        </h1>
-        <p className="subtitle">
+        <div className="hero-left">
+          <p className="pill">Welcome to my portfolio</p>
+
+          <h1>
+            Hi, I&apos;m <span className="accent">Clay</span>.
+          </h1>
+
+          <p className="subtitle">
           I&apos;m an aspiring <span className="accent">front-end developer</span> and this portfolio is where I experiment
           with React, TypeScript, and modern UI practices.
         </p>
-        <div className="hero-actions">
+          <div className="hero-actions">
           <a href="#projects" className="btn primary">
             View projects
           </a>
@@ -25,7 +39,25 @@ export const Home = () => {
             Contact me
           </a>
         </div>
+        </div>
+        <div className="hero-right">
+          <img
+            className="hero-picture"
+            src={images[currentImage]}
+            alt="Clay"
+          />
+        </div>
       </div>
+  );
+}
+
+export const Home = () => {
+  const CONTACT_EMAIL = "claydleslie@icloud.com";
+  const [isContactOpen, setIsContactOpen] = useState(false);
+
+  return (
+    <section className="page">
+      <Hero />
 
       <section id="projects" className="section">
         <h2>Featured projects</h2>

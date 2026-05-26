@@ -692,6 +692,7 @@ export const BeanData = () => {
             purchases. I'm using this project to experiment with data
             visualisation.
           </p>
+          <p>Please note: The data has been provided by myself and a friend, so this reflects our preferences alone. This is not trying to be an "objective measure" of coffee characteristics by any means.</p>
         </div>
       </header>
 

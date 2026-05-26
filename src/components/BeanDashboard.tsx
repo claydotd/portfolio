@@ -23,9 +23,25 @@ const CHART_COLORS = [
   "#fff3c4",
 ];
 
-const HEATMAP_AXIS_LABELS: Record<HeatmapRowAxis, string> = {
+// ── Extend HeatmapRowAxis to include varietal and process ────────────────────
+// NOTE: If your beanStats lib types HeatmapRowAxis as a union, you may need to
+// extend it there too. Here we widen it locally so the component compiles.
+type ExtendedAxis = HeatmapRowAxis | "varietal" | "process";
+
+const HEATMAP_AXIS_LABELS: Record<ExtendedAxis, string> = {
   roaster: "Roasters",
   notes: "Tasting notes",
+  varietal: "Varietals",
+  process: "Processes",
+};
+
+// ── Panel axis labels for the Roasters & Tasting Notes section ───────────────
+type PanelAxis = "notes" | "roaster" | "varietal" | "process";
+const PANEL_AXIS_LABELS: Record<PanelAxis, string> = {
+  notes: "Tasting notes",
+  roaster: "Roasters",
+  varietal: "Varietals",
+  process: "Processes",
 };
 
 interface BeanDashboardProps {
@@ -34,16 +50,10 @@ interface BeanDashboardProps {
 }
 
 interface HoverOverlayState {
-  /** Human-readable title shown in the card, e.g. "Onyx × Espresso" or "Caramel" */
   label: string;
-  /**
-   * Structured lookup context so we can always find the right beans:
-   * - kind "note"  → filter beans by note label
-   * - kind "cell"  → filter beans by heatmap row+col given the current axis
-   */
   lookup:
     | { kind: "note"; note: string }
-    | { kind: "cell"; row: string; col: string; axis: HeatmapRowAxis };
+    | { kind: "cell"; row: string; col: string; axis: ExtendedAxis };
   x: number;
   y: number;
 }
@@ -51,69 +61,103 @@ interface HoverOverlayState {
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 /**
- * Group tasting notes by roaster, counting only "Great On" brew-method entries
- * (i.e. bean.greatOn / bean.greatAs entries) rather than raw note occurrences.
- * Falls back to plain note counts if the bean model doesn't carry greatOn data.
+ * Normalise a comma-containing value to "Mixed", otherwise trim and return as-is.
+ * Empty / nullish values become "Unknown".
  */
-function getNotesByRoaster(
-  beans: BeanRecord[]
-): Map<string, { label: string; count: number }[]> {
-  const roasterNotes = new Map<string, Map<string, number>>();
-
-  for (const bean of beans) {
-    const roaster = bean.roaster ?? "Unknown";
-    if (!roasterNotes.has(roaster)) roasterNotes.set(roaster, new Map());
-    const noteMap = roasterNotes.get(roaster)!;
-    // Weight by greatOn entries so popular/loved notes surface first.
-    const greatOnCount =
-      (bean as any).greatOn?.length ?? (bean as any).greatAs?.length ?? 1;
-    for (const note of bean.notes ?? []) {
-      noteMap.set(note, (noteMap.get(note) ?? 0) + greatOnCount);
-    }
-  }
-
-  const result = new Map<string, { label: string; count: number }[]>();
-  for (const [roaster, noteMap] of roasterNotes) {
-    const sorted = [...noteMap.entries()]
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count);
-    result.set(roaster, sorted);
-  }
-  return result;
+function normaliseField(value: string | undefined | null): string {
+  if (!value || value.trim() === "") return "Unknown";
+  return value.includes(",") ? "Mixed" : value.trim();
 }
 
 /**
- * Aggregate tasting notes across ALL beans weighted by "Great On" entries,
- * returning them sorted descending — used as the default view before a roaster
- * is selected.
+ * Build a correlation matrix that supports varietal and process axes in
+ * addition to the existing roaster/notes axes.
+ * Falls back to the imported buildCorrelationMatrix for roaster/notes.
  */
-function getTopNotesWeightedByGreatOn(
-  beans: BeanRecord[]
-): { label: string; count: number }[] {
-  const noteMap = new Map<string, number>();
+function buildExtendedMatrix(
+  beans: BeanRecord[],
+  axis: ExtendedAxis
+): ReturnType<typeof buildCorrelationMatrix> {
+  if (axis === "roaster" || axis === "notes") {
+    return buildCorrelationMatrix(beans, axis as HeatmapRowAxis);
+  }
+
+  // Build matrix for varietal / process
+  const colSet = new Set<string>();
+  const countMap = new Map<string, Map<string, number>>();
+
   for (const bean of beans) {
-    const greatOnCount =
-      (bean as any).greatOn?.length ?? (bean as any).greatAs?.length ?? 1;
-    for (const note of bean.notes ?? []) {
-      noteMap.set(note, (noteMap.get(note) ?? 0) + greatOnCount);
+    const rowValue =
+      axis === "varietal"
+        ? normaliseField((bean as any).varietal)
+        : normaliseField((bean as any).process);
+
+    const methods: string[] =
+      (bean as any).greatOn ?? (bean as any).greatAs ?? [];
+
+    if (!countMap.has(rowValue)) countMap.set(rowValue, new Map());
+    const colMap = countMap.get(rowValue)!;
+
+    for (const method of methods) {
+      if (!method) continue;
+      colSet.add(method);
+      colMap.set(method, (colMap.get(method) ?? 0) + 1);
     }
   }
-  return [...noteMap.entries()]
+
+  const rows = [...countMap.keys()].sort();
+  const cols = [...colSet].sort();
+  const cells: MatrixCell[] = [];
+  let max = 0;
+
+  for (const row of rows) {
+    const colMap = countMap.get(row)!;
+    for (const col of cols) {
+      const count = colMap.get(col) ?? 0;
+      if (count > 0) {
+        cells.push({ row, col, count });
+        if (count > max) max = count;
+      }
+    }
+  }
+
+  return { rows, cols, cells, max: max || 1 };
+}
+
+/**
+ * Get counts for any panel axis, applying origin filter and Mixed normalisation.
+ */
+function getPanelCounts(
+  beans: BeanRecord[],
+  axis: PanelAxis
+): { label: string; count: number }[] {
+  const map = new Map<string, number>();
+
+  for (const bean of beans) {
+    let keys: string[] = [];
+
+    if (axis === "notes") {
+      keys = bean.notes ?? [];
+    } else if (axis === "roaster") {
+      keys = [bean.roaster ?? "Unknown"];
+    } else if (axis === "varietal") {
+      keys = [normaliseField((bean as any).varietal)];
+    } else if (axis === "process") {
+      keys = [normaliseField((bean as any).process)];
+    }
+
+    for (const key of keys) {
+      if (key) map.set(key, (map.get(key) ?? 0) + 1);
+    }
+  }
+
+  return [...map.entries()]
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count);
 }
 
 /**
- * Given a HoverOverlayState lookup descriptor and the current bean list,
- * returns up to `limit` matching BeanRecords (with their brew methods attached)
- * for display in the overlay card.
- *
- * For "note" lookups:  beans that have that note in their notes array.
- * For "cell" lookups:
- *   - axis "roaster": beans whose roaster === row AND whose greatAs/greatOn
- *     brew methods include col.
- *   - axis "notes":   beans whose notes include row AND whose greatAs/greatOn
- *     brew methods include col.
+ * Get overlay beans — extended to handle varietal/process lookups.
  */
 function getBeansForOverlay(
   beans: BeanRecord[],
@@ -130,12 +174,17 @@ function getBeansForOverlay(
       const methods: string[] =
         (b as any).greatOn ?? (b as any).greatAs ?? [];
       const hasMethod = methods.includes(col);
+
       if (axis === "roaster") {
         return (b.roaster ?? "Unknown") === row && hasMethod;
-      } else {
-        // axis === "notes"
+      } else if (axis === "notes") {
         return b.notes?.includes(row) && hasMethod;
+      } else if (axis === "varietal") {
+        return normaliseField((b as any).varietal) === row && hasMethod;
+      } else if (axis === "process") {
+        return normaliseField((b as any).process) === row && hasMethod;
       }
+      return false;
     });
   }
 
@@ -146,14 +195,22 @@ function getBeansForOverlay(
   }));
 }
 
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const PANEL_COLLAPSED_LIMIT = 5;
+
 export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const [noteOverlay, setNoteOverlay] = useState<HoverOverlayState | null>(null);
   const [activePanel, setActivePanel] = useState<string | null>(null);
-  const [heatmapAxis, setHeatmapAxis] = useState<HeatmapRowAxis>("roaster");
+  const [heatmapAxis, setHeatmapAxis] = useState<ExtendedAxis>("roaster");
 
-  // selectedRoaster drives the Roasters & Tasting Notes panel independently
-  const [selectedRoaster, setSelectedRoaster] = useState<string | null>(null);
+  // Panel axis for the Roasters & Tasting Notes card
+  const [panelAxis, setPanelAxis] = useState<PanelAxis>("roaster");
+  // Track which panel items are expanded (by label)
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  // Whether the main items list itself is expanded
+  const [itemsExpanded, setItemsExpanded] = useState(false);
 
   const filteredBeans = useMemo(
     () => filterBeansByOrigin(beans, selectedOrigin),
@@ -162,10 +219,42 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
 
   const noteCounts = useMemo(() => getNoteCounts(filteredBeans), [filteredBeans]);
   const originCounts = useMemo(() => getOriginCounts(beans), [beans]);
-  const notesByRoaster = useMemo(() => getNotesByRoaster(beans), [beans]);
-  const topNotesWeighted = useMemo(() => getTopNotesWeightedByGreatOn(beans), [beans]);
+
+  // Panel counts — respect selectedOrigin filter
+  const panelCounts = useMemo(
+    () => getPanelCounts(filteredBeans, panelAxis),
+    [filteredBeans, panelAxis]
+  );
+
+  // For "roaster" axis, also compute a secondary breakdown (notes per roaster)
+  // so we can show the expandable note list under each roaster tab.
+  const notesByGroupItem = useMemo(() => {
+    if (panelAxis !== "roaster") return new Map<string, { label: string; count: number }[]>();
+    const map = new Map<string, Map<string, number>>();
+    for (const bean of filteredBeans) {
+      const roaster = bean.roaster ?? "Unknown";
+      if (!map.has(roaster)) map.set(roaster, new Map());
+      const noteMap = map.get(roaster)!;
+      const greatOnCount =
+        (bean as any).greatOn?.length ?? (bean as any).greatAs?.length ?? 1;
+      for (const note of bean.notes ?? []) {
+        noteMap.set(note, (noteMap.get(note) ?? 0) + greatOnCount);
+      }
+    }
+    const result = new Map<string, { label: string; count: number }[]>();
+    for (const [roaster, noteMap] of map) {
+      result.set(
+        roaster,
+        [...noteMap.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count)
+      );
+    }
+    return result;
+  }, [filteredBeans, panelAxis]);
+
   const heatmapMatrix = useMemo(
-    () => buildCorrelationMatrix(filteredBeans, heatmapAxis),
+    () => buildExtendedMatrix(filteredBeans, heatmapAxis),
     [filteredBeans, heatmapAxis]
   );
 
@@ -177,7 +266,24 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
   const maxNoteCount = noteCounts[0]?.count ?? 1;
   const total = getTotalCoffees(beans);
   const roasterCount = getUniqueRoasterCount(beans);
-  const roasterEntries = [...notesByRoaster.entries()];
+
+  // Visible panel items (collapsed or expanded)
+  const visiblePanelCounts = itemsExpanded
+    ? panelCounts
+    : panelCounts.slice(0, PANEL_COLLAPSED_LIMIT);
+
+  // Reset expansion state when axis or origin changes
+  const handlePanelAxisChange = (axis: PanelAxis) => {
+    setPanelAxis(axis);
+    setExpandedItems(new Set());
+    setItemsExpanded(false);
+  };
+
+  const handleOriginSelect = (label: string) => {
+    setSelectedOrigin((prev) => (prev === label ? null : label));
+    setExpandedItems(new Set());
+    setItemsExpanded(false);
+  };
 
   // ── overlay handlers ──────────────────────────────────────────────────────
 
@@ -207,7 +313,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
     (
       row: string,
       col: string,
-      axis: HeatmapRowAxis,
+      axis: ExtendedAxis,
       clientX: number,
       clientY: number
     ) => {
@@ -284,7 +390,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
           </p>
         </article>
 
-        {/* ── 2. Origins (moved before Tasting Notes) ── */}
+        {/* ── 2. Origins ── */}
         <div className="dashboard-row dashboard-row--origins">
           <article
             className={`dashboard-card dashboard-card--origins${activePanel === "origins" ? " is-active" : ""}`}
@@ -300,9 +406,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
             <DonutChart
               entries={originCounts}
               selected={selectedOrigin}
-              onSelect={(label) =>
-                setSelectedOrigin((prev) => (prev === label ? null : label))
-              }
+              onSelect={handleOriginSelect}
             />
             <ul className="donut-legend">
               {originCounts.map((entry, i) => (
@@ -312,11 +416,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
                     className={`donut-legend__btn${
                       selectedOrigin === entry.label ? " is-selected" : ""
                     }`}
-                    onClick={() =>
-                      setSelectedOrigin((prev) =>
-                        prev === entry.label ? null : entry.label
-                      )
-                    }
+                    onClick={() => handleOriginSelect(entry.label)}
                   >
                     <span
                       className="donut-legend__swatch"
@@ -332,7 +432,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
             </ul>
           </article>
 
-          {/* ── 3. Roasters & Tasting Notes ── */}
+          {/* ── 3. Roasters & Tasting Notes (now with axis switcher + collapse) ── */}
           <article
             className={`dashboard-card dashboard-card--origin-notes${activePanel === "roaster-notes" ? " is-active" : ""}`}
             onMouseEnter={() => setActivePanel("roaster-notes")}
@@ -340,103 +440,188 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
           >
             <header className="dashboard-card__header">
               <div>
-                <h3 className="dashboard-card__title">
-                  Roasters &amp; tasting notes
+                <h3 className="dashboard-card__title dashboard-card__title--heatmap">
+                  {/* Axis selector mirroring the heatmap style */}
+                  <label className="heatmap-axis-label">
+                    <span className="visually-hidden">Show: </span>
+                    <select
+                      className="heatmap-axis-select"
+                      value={panelAxis}
+                      onChange={(e) =>
+                        handlePanelAxisChange(e.target.value as PanelAxis)
+                      }
+                      aria-label="Panel grouping"
+                    >
+                      <option value="roaster">Roasters</option>
+                      <option value="notes">Tasting notes</option>
+                      <option value="varietal">Varietals</option>
+                      <option value="process">Processes</option>
+                    </select>
+                  </label>
                 </h3>
                 <p className="dashboard-card__subtitle">
-                  {selectedRoaster
-                    ? `Most liked flavours for ${selectedRoaster}`
-                    : "Most liked tasting notes across all roasters. Each 'Great as' gets one point."}
+                  {selectedOrigin
+                    ? `Filtered by ${selectedOrigin} · `
+                    : ""}
+                  {panelAxis === "roaster"
+                    ? "Sorted by number of coffees. Expand a roaster to see its tasting notes."
+                    : `All ${PANEL_AXIS_LABELS[panelAxis].toLowerCase()} sorted by count.`}
                 </p>
               </div>
             </header>
-            <div className="origin-notes">
-              <div className="origin-notes__tabs" role="tablist">
-                {/* "All" pill resets to the default weighted view */}
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={selectedRoaster === null}
-                  className={`origin-tab${selectedRoaster === null ? " is-selected" : ""}`}
-                  onClick={() => setSelectedRoaster(null)}
-                >
-                  All
-                </button>
-                {roasterEntries.map(([roaster]) => (
-                  <button
-                    key={roaster}
-                    type="button"
-                    role="tab"
-                    aria-selected={selectedRoaster === roaster}
-                    className={`origin-tab${
-                      selectedRoaster === roaster ? " is-selected" : ""
-                    }`}
-                    onClick={() =>
-                      setSelectedRoaster((prev) =>
-                        prev === roaster ? null : roaster
-                      )
-                    }
-                  >
-                    {roaster}
-                  </button>
-                ))}
-              </div>
-              <div className="origin-notes__panel">
-                {(() => {
-                  // When no roaster is selected, show the global "most liked" cloud.
-                  const activeNotes = selectedRoaster
-                    ? (notesByRoaster.get(selectedRoaster) ?? [])
-                    : topNotesWeighted;
-                  const panelTitle = selectedRoaster ?? "Most liked";
+
+            {/* Item list */}
+            <div className="panel-axis-list">
+              {visiblePanelCounts.length === 0 ? (
+                <p className="dashboard-card__meta">No data yet.</p>
+              ) : (
+                visiblePanelCounts.map((item, i) => {
+                  const isExpanded = expandedItems.has(item.label);
+                  const subNotes =
+                    panelAxis === "roaster"
+                      ? notesByGroupItem.get(item.label) ?? []
+                      : [];
+                  const visibleSubNotes = isExpanded
+                    ? subNotes
+                    : subNotes.slice(0, PANEL_COLLAPSED_LIMIT);
+
                   return (
-                    <div className="origin-notes__detail">
-                      <h4>{panelTitle}</h4>
-                      <div className="note-cloud">
-                        {activeNotes.length === 0 ? (
-                          <p className="dashboard-card__meta">No notes yet</p>
-                        ) : (
-                          activeNotes.map((note, i) => {
-                            const scale =
-                              0.75 +
-                              (note.count / (activeNotes[0]?.count ?? 1)) * 0.5;
-                            const isHovered = noteOverlay?.label === note.label;
-                            return (
-                              <span
-                                key={note.label}
-                                className="note-cloud__tag"
-                                style={{
-                                  fontSize: `${scale}rem`,
-                                  background:
-                                    CHART_COLORS[i % CHART_COLORS.length],
-                                  cursor: "default",
-                                  opacity: isHovered || !noteOverlay ? 1 : 0.5,
-                                }}
-                                onMouseEnter={(e) =>
-                                  showNoteOverlay(note.label, e.clientX, e.clientY)
-                                }
-                                onMouseMove={(e) =>
-                                  moveNoteOverlay(e.clientX, e.clientY)
-                                }
-                                onMouseLeave={hideNoteOverlay}
-                              >
-                                {note.label}
-                                <span className="note-cloud__count">
-                                  {note.count}
-                                </span>
-                              </span>
-                            );
-                          })
+                    <div key={item.label} className="panel-axis-item">
+                      <div className="panel-axis-item__header">
+                        <span
+                          className="panel-axis-item__swatch"
+                          style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
+                        />
+                        <span className="panel-axis-item__label">{item.label}</span>
+                        <span className="panel-axis-item__count">{item.count}</span>
+                        {/* Expand button — only for roasters (sub-notes exist) */}
+                        {panelAxis === "roaster" && subNotes.length > 0 && (
+                          <button
+                            type="button"
+                            className="panel-axis-item__expand-btn"
+                            aria-expanded={isExpanded}
+                            onClick={() =>
+                              setExpandedItems((prev) => {
+                                const next = new Set(prev);
+                                isExpanded
+                                  ? next.delete(item.label)
+                                  : next.add(item.label);
+                                return next;
+                              })
+                            }
+                          >
+                            {isExpanded ? "▲ Hide notes" : "▼ Show notes"}
+                          </button>
                         )}
                       </div>
+
+                      {/* Sub-notes for roaster axis */}
+                      {panelAxis === "roaster" && isExpanded && (
+                        <div className="panel-axis-item__subnotes">
+                          <div className="note-cloud note-cloud--sub">
+                            {visibleSubNotes.map((note, j) => {
+                              const scale =
+                                0.7 +
+                                (note.count / (subNotes[0]?.count ?? 1)) * 0.45;
+                              return (
+                                <span
+                                  key={note.label}
+                                  className="note-cloud__tag note-cloud__tag--small"
+                                  style={{
+                                    fontSize: `${scale}rem`,
+                                    background:
+                                      CHART_COLORS[j % CHART_COLORS.length],
+                                  }}
+                                >
+                                  {note.label}
+                                  <span className="note-cloud__count">
+                                    {note.count}
+                                  </span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                          {subNotes.length > PANEL_COLLAPSED_LIMIT && (
+                            <button
+                              type="button"
+                              className="panel-axis-item__expand-btn panel-axis-item__expand-btn--sub"
+                              onClick={() =>
+                                setExpandedItems((prev) => {
+                                  // We reuse the same expanded state but track
+                                  // sub-expansion via a secondary key
+                                  const subKey = `${item.label}::subnotes`;
+                                  const next = new Set(prev);
+                                  next.has(subKey)
+                                    ? next.delete(subKey)
+                                    : next.add(subKey);
+                                  // Always keep parent expanded
+                                  next.add(item.label);
+                                  return next;
+                                })
+                              }
+                            >
+                              {expandedItems.has(`${item.label}::subnotes`)
+                                ? `▲ Show fewer notes`
+                                : `▼ Show all ${subNotes.length} notes`}
+                            </button>
+                          )}
+                          {/* Re-render with full sub-notes if sub-expanded */}
+                          {expandedItems.has(`${item.label}::subnotes`) &&
+                            subNotes.length > PANEL_COLLAPSED_LIMIT && (
+                              <div className="note-cloud note-cloud--sub">
+                                {subNotes
+                                  .slice(PANEL_COLLAPSED_LIMIT)
+                                  .map((note, j) => {
+                                    const scale =
+                                      0.7 +
+                                      (note.count / (subNotes[0]?.count ?? 1)) *
+                                        0.45;
+                                    return (
+                                      <span
+                                        key={note.label}
+                                        className="note-cloud__tag note-cloud__tag--small"
+                                        style={{
+                                          fontSize: `${scale}rem`,
+                                          background:
+                                            CHART_COLORS[
+                                              (j + PANEL_COLLAPSED_LIMIT) %
+                                                CHART_COLORS.length
+                                            ],
+                                        }}
+                                      >
+                                        {note.label}
+                                        <span className="note-cloud__count">
+                                          {note.count}
+                                        </span>
+                                      </span>
+                                    );
+                                  })}
+                              </div>
+                            )}
+                        </div>
+                      )}
                     </div>
                   );
-                })()}
-              </div>
+                })
+              )}
+
+              {/* Show more / show fewer for the top-level list */}
+              {panelCounts.length > PANEL_COLLAPSED_LIMIT && (
+                <button
+                  type="button"
+                  className="panel-axis-showmore"
+                  onClick={() => setItemsExpanded((v) => !v)}
+                >
+                  {itemsExpanded
+                    ? `▲ Show fewer`
+                    : `▼ Show all ${panelCounts.length} ${PANEL_AXIS_LABELS[panelAxis].toLowerCase()}`}
+                </button>
+              )}
             </div>
           </article>
         </div>
 
-        {/* ── 4. Tasting Notes bar chart (moved after Origins) ── */}
+        {/* ── 4. Tasting Notes bar chart ── */}
         <article
           className={`dashboard-card dashboard-card--notes${activePanel === "notes" ? " is-active" : ""}`}
           onMouseEnter={() => setActivePanel("notes")}
@@ -511,7 +696,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
           </ul>
         </article>
 
-        {/* ── 5. Heatmap ── */}
+        {/* ── 5. Heatmap (now with varietal + process axes) ── */}
         <article
           className={`dashboard-card dashboard-card--matrix${activePanel === "heatmap" ? " is-active" : ""}`}
           onMouseEnter={() => setActivePanel("heatmap")}
@@ -526,25 +711,34 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
                     className="heatmap-axis-select"
                     value={heatmapAxis}
                     onChange={(e) =>
-                      setHeatmapAxis(e.target.value as HeatmapRowAxis)
+                      setHeatmapAxis(e.target.value as ExtendedAxis)
                     }
                     aria-label="Heatmap row axis"
                   >
                     <option value="roaster">Roasters</option>
                     <option value="notes">Tasting notes</option>
+                    <option value="varietal">Varietals</option>
+                    <option value="process">Processes</option>
                   </select>
                 </label>
                 <span className="heatmap-axis-suffix"> &amp; brew methods</span>
               </h3>
               <p className="dashboard-card__subtitle">
-                How {HEATMAP_AXIS_LABELS[heatmapAxis].toLowerCase()} pair with
-                &ldquo;Great As&rdquo;
+                How {HEATMAP_AXIS_LABELS[heatmapAxis].toLowerCase()} pair with brew methods
               </p>
             </div>
           </header>
           <Heatmap
             matrix={heatmapMatrix}
-            rowLabel={heatmapAxis === "roaster" ? "Roaster" : "Note"}
+            rowLabel={
+              heatmapAxis === "roaster"
+                ? "Roaster"
+                : heatmapAxis === "notes"
+                ? "Note"
+                : heatmapAxis === "varietal"
+                ? "Varietal"
+                : "Process"
+            }
             axis={heatmapAxis}
             onCellOverlay={(row, col, x, y) =>
               showCellOverlay(row, col, heatmapAxis, x, y)
@@ -587,8 +781,6 @@ function NoteCoffeeOverlay({ label, x, y, coffees }: NoteCoffeeOverlayProps) {
       style={{
         top: y,
         left: x,
-        // Left half: no transform — top-left corner at pointer, grows right.
-        // Right half: shift fully left — top-right corner at pointer, grows left.
         transform: isRightHalf ? "translate(-100%, 0)" : "none",
       }}
       role="tooltip"
@@ -633,13 +825,9 @@ function DonutChart({ entries, selected, onSelect }: DonutChartProps) {
   const size = 140;
   const stroke = 24;
   const selectedStroke = 32;
-  // Padding must be at least half the extra stroke so the expanded segment
-  // isn't clipped by the SVG viewport. Half of (selectedStroke - stroke) = 4.
   const pad = (selectedStroke - stroke) / 2;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  // The viewBox is enlarged by `pad` on every side; circles stay centred on
-  // (size/2 + pad, size/2 + pad) within the padded coordinate space.
   const cx = size / 2 + pad;
   const cy = size / 2 + pad;
   const vbSize = size + pad * 2;
@@ -713,7 +901,7 @@ function DonutChart({ entries, selected, onSelect }: DonutChartProps) {
 interface HeatmapProps {
   matrix: ReturnType<typeof buildCorrelationMatrix>;
   rowLabel: string;
-  axis: HeatmapRowAxis;
+  axis: ExtendedAxis;
   onCellOverlay: (row: string, col: string, x: number, y: number) => void;
   onCellOverlayMove: (x: number, y: number) => void;
   onCellOverlayHide: () => void;
@@ -736,9 +924,6 @@ function Heatmap({
 
   const cellMap = new Map(cells.map((c) => [`${c.row}::${c.col}`, c.count]));
 
-  // Dynamic column widths: row-header + one equal fraction per data column.
-  // We use a CSS grid laid out as a flat sequence of divs instead of a table
-  // so we can collapse all gaps to zero and size cells purely by content.
   const ROW_HEADER_W = "minmax(6rem, max-content)";
   const COL_W = "minmax(2.5rem, 1fr)";
   const gridTemplateColumns = [ROW_HEADER_W, ...cols.map(() => COL_W)].join(" ");

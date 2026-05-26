@@ -179,7 +179,7 @@ a {
 .hero-right {
   position: absolute;
   right: 0;
-  bottom: -175px; /* pushes image into next section */
+  bottom: -175px;
   z-index: -1;
 }
 
@@ -247,6 +247,13 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+/* Mobile */
+@media (max-width: 500px) {
+  .hero-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* ── Mobile nav button ───────────────────────────────────── */
@@ -1695,6 +1702,109 @@ h2 {
 .bean-card-edit {
   width: 100%;
   margin-top: 0.5rem;
+}
+
+/* ── Panel axis list (Roasters & Tasting Notes card) ────────────────────── */
+
+.panel-axis-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.panel-axis-item {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.panel-axis-item__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  background: var(--cream-mid, #f5ede0);
+}
+
+.panel-axis-item__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.panel-axis-item__label {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel-axis-item__count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.panel-axis-item__expand-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.72rem;
+  color: var(--brown, #6b4226);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.panel-axis-item__expand-btn:hover {
+  background: rgba(0,0,0,0.07);
+}
+
+.panel-axis-item__expand-btn--sub {
+  display: block;
+  margin-top: 0.35rem;
+  margin-left: 0.5rem;
+}
+
+.panel-axis-item__subnotes {
+  padding: 0.4rem 0.5rem 0.5rem 1rem;
+  background: var(--cream-light, #fdf6ec);
+  border-left: 2px solid var(--cream-mid, #f5ede0);
+  margin-left: 0.5rem;
+  border-radius: 0 0 6px 6px;
+}
+
+.note-cloud--sub {
+  margin-top: 0.25rem;
+}
+
+.note-cloud__tag--small {
+  /* Inherits note-cloud__tag styles; just slightly smaller min size */
+  font-size: 0.75rem !important;
+}
+
+.panel-axis-showmore {
+  background: none;
+  border: 1px dashed var(--cream-mid, #e0d0bb);
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--brown, #6b4226);
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  margin-top: 0.35rem;
+  width: 100%;
+  transition: background 0.15s;
+}
+
+.panel-axis-showmore:hover {
+  background: var(--cream-mid, #f5ede0);
 }
 
 /* ── BeanData dashboard ───────────────────────────────────── */

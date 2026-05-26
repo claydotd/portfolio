@@ -23,9 +23,7 @@ const CHART_COLORS = [
   "#fff3c4",
 ];
 
-// ── Extend HeatmapRowAxis to include varietal and process ────────────────────
-// NOTE: If your beanStats lib types HeatmapRowAxis as a union, you may need to
-// extend it there too. Here we widen it locally so the component compiles.
+// ── Extended axis type (adds varietal + process to the heatmap) ──────────────
 type ExtendedAxis = HeatmapRowAxis | "varietal" | "process";
 
 const HEATMAP_AXIS_LABELS: Record<ExtendedAxis, string> = {
@@ -35,14 +33,8 @@ const HEATMAP_AXIS_LABELS: Record<ExtendedAxis, string> = {
   process: "Processes",
 };
 
-// ── Panel axis labels for the Roasters & Tasting Notes section ───────────────
-type PanelAxis = "notes" | "roaster" | "varietal" | "process";
-const PANEL_AXIS_LABELS: Record<PanelAxis, string> = {
-  notes: "Tasting notes",
-  roaster: "Roasters",
-  varietal: "Varietals",
-  process: "Processes",
-};
+// ── Panel tab axis — what the tabs in the Roasters & Tasting Notes card show ─
+type PanelTabAxis = "roaster" | "varietal" | "process";
 
 interface BeanDashboardProps {
   beans: BeanRecord[];
@@ -60,19 +52,15 @@ interface HoverOverlayState {
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-/**
- * Normalise a comma-containing value to "Mixed", otherwise trim and return as-is.
- * Empty / nullish values become "Unknown".
- */
+/** Normalise comma-containing values to "Mixed"; empty → "Unknown". */
 function normaliseField(value: string | undefined | null): string {
   if (!value || value.trim() === "") return "Unknown";
   return value.includes(",") ? "Mixed" : value.trim();
 }
 
 /**
- * Build a correlation matrix that supports varietal and process axes in
- * addition to the existing roaster/notes axes.
- * Falls back to the imported buildCorrelationMatrix for roaster/notes.
+ * Build a heatmap correlation matrix that supports varietal and process axes
+ * in addition to the existing roaster/notes axes from beanStats.
  */
 function buildExtendedMatrix(
   beans: BeanRecord[],
@@ -82,7 +70,6 @@ function buildExtendedMatrix(
     return buildCorrelationMatrix(beans, axis as HeatmapRowAxis);
   }
 
-  // Build matrix for varietal / process
   const colSet = new Set<string>();
   const countMap = new Map<string, Map<string, number>>();
 
@@ -125,40 +112,77 @@ function buildExtendedMatrix(
 }
 
 /**
- * Get counts for any panel axis, applying origin filter and Mixed normalisation.
+ * Group tasting notes by a given tab axis (roaster / varietal / process),
+ * weighting by greatOn/greatAs count. Returns a map of groupKey → sorted notes.
  */
-function getPanelCounts(
+function getNotesByGroup(
   beans: BeanRecord[],
-  axis: PanelAxis
-): { label: string; count: number }[] {
-  const map = new Map<string, number>();
+  axis: PanelTabAxis
+): Map<string, { label: string; count: number }[]> {
+  const groupNotes = new Map<string, Map<string, number>>();
 
   for (const bean of beans) {
-    let keys: string[] = [];
+    const groupKey =
+      axis === "roaster"
+        ? (bean.roaster ?? "Unknown")
+        : axis === "varietal"
+        ? normaliseField((bean as any).varietal)
+        : normaliseField((bean as any).process);
 
-    if (axis === "notes") {
-      keys = bean.notes ?? [];
-    } else if (axis === "roaster") {
-      keys = [bean.roaster ?? "Unknown"];
-    } else if (axis === "varietal") {
-      keys = [normaliseField((bean as any).varietal)];
-    } else if (axis === "process") {
-      keys = [normaliseField((bean as any).process)];
-    }
-
-    for (const key of keys) {
-      if (key) map.set(key, (map.get(key) ?? 0) + 1);
+    if (!groupNotes.has(groupKey)) groupNotes.set(groupKey, new Map());
+    const noteMap = groupNotes.get(groupKey)!;
+    const greatOnCount =
+      (bean as any).greatOn?.length ?? (bean as any).greatAs?.length ?? 1;
+    for (const note of bean.notes ?? []) {
+      noteMap.set(note, (noteMap.get(note) ?? 0) + greatOnCount);
     }
   }
 
-  return [...map.entries()]
+  // Sort group keys by total coffee count (descending)
+  const groupCoffeeCount = new Map<string, number>();
+  for (const bean of beans) {
+    const groupKey =
+      axis === "roaster"
+        ? (bean.roaster ?? "Unknown")
+        : axis === "varietal"
+        ? normaliseField((bean as any).varietal)
+        : normaliseField((bean as any).process);
+    groupCoffeeCount.set(groupKey, (groupCoffeeCount.get(groupKey) ?? 0) + 1);
+  }
+
+  const result = new Map<string, { label: string; count: number }[]>();
+  // Sort entries by coffee count descending
+  const sortedEntries = [...groupNotes.entries()].sort(
+    (a, b) => (groupCoffeeCount.get(b[0]) ?? 0) - (groupCoffeeCount.get(a[0]) ?? 0)
+  );
+  for (const [groupKey, noteMap] of sortedEntries) {
+    const sorted = [...noteMap.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count);
+    result.set(groupKey, sorted);
+  }
+  return result;
+}
+
+/**
+ * Aggregate tasting notes across ALL beans weighted by greatOn entries.
+ */
+function getTopNotesWeightedByGreatOn(
+  beans: BeanRecord[]
+): { label: string; count: number }[] {
+  const noteMap = new Map<string, number>();
+  for (const bean of beans) {
+    const greatOnCount =
+      (bean as any).greatOn?.length ?? (bean as any).greatAs?.length ?? 1;
+    for (const note of bean.notes ?? []) {
+      noteMap.set(note, (noteMap.get(note) ?? 0) + greatOnCount);
+    }
+  }
+  return [...noteMap.entries()]
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count);
 }
 
-/**
- * Get overlay beans — extended to handle varietal/process lookups.
- */
 function getBeansForOverlay(
   beans: BeanRecord[],
   lookup: HoverOverlayState["lookup"],
@@ -174,16 +198,10 @@ function getBeansForOverlay(
       const methods: string[] =
         (b as any).greatOn ?? (b as any).greatAs ?? [];
       const hasMethod = methods.includes(col);
-
-      if (axis === "roaster") {
-        return (b.roaster ?? "Unknown") === row && hasMethod;
-      } else if (axis === "notes") {
-        return b.notes?.includes(row) && hasMethod;
-      } else if (axis === "varietal") {
-        return normaliseField((b as any).varietal) === row && hasMethod;
-      } else if (axis === "process") {
-        return normaliseField((b as any).process) === row && hasMethod;
-      }
+      if (axis === "roaster") return (b.roaster ?? "Unknown") === row && hasMethod;
+      if (axis === "notes") return b.notes?.includes(row) && hasMethod;
+      if (axis === "varietal") return normaliseField((b as any).varietal) === row && hasMethod;
+      if (axis === "process") return normaliseField((b as any).process) === row && hasMethod;
       return false;
     });
   }
@@ -195,9 +213,8 @@ function getBeansForOverlay(
   }));
 }
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const PANEL_COLLAPSED_LIMIT = 5;
+// How many tabs to show before the card is "collapsed"
+const PANEL_TAB_COLLAPSED_COUNT = 8;
 
 export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
@@ -205,12 +222,23 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [heatmapAxis, setHeatmapAxis] = useState<ExtendedAxis>("roaster");
 
-  // Panel axis for the Roasters & Tasting Notes card
-  const [panelAxis, setPanelAxis] = useState<PanelAxis>("roaster");
-  // Track which panel items are expanded (by label)
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  // Whether the main items list itself is expanded
-  const [itemsExpanded, setItemsExpanded] = useState(false);
+  // Panel card state
+  const [panelTabAxis, setPanelTabAxis] = useState<PanelTabAxis>("roaster");
+  const [selectedTab, setSelectedTab] = useState<string | null>(null);
+  const [panelExpanded, setPanelExpanded] = useState(false);
+
+  // When the tab axis changes, reset tab selection and collapse
+  const handlePanelTabAxisChange = (axis: PanelTabAxis) => {
+    setPanelTabAxis(axis);
+    setSelectedTab(null);
+    setPanelExpanded(false);
+  };
+
+  // When origin changes, reset tab selection
+  const handleOriginSelect = (label: string) => {
+    setSelectedOrigin((prev) => (prev === label ? null : label));
+    setSelectedTab(null);
+  };
 
   const filteredBeans = useMemo(
     () => filterBeansByOrigin(beans, selectedOrigin),
@@ -220,38 +248,15 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
   const noteCounts = useMemo(() => getNoteCounts(filteredBeans), [filteredBeans]);
   const originCounts = useMemo(() => getOriginCounts(beans), [beans]);
 
-  // Panel counts — respect selectedOrigin filter
-  const panelCounts = useMemo(
-    () => getPanelCounts(filteredBeans, panelAxis),
-    [filteredBeans, panelAxis]
+  // notesByGroup uses filteredBeans so origin filter flows through
+  const notesByGroup = useMemo(
+    () => getNotesByGroup(filteredBeans, panelTabAxis),
+    [filteredBeans, panelTabAxis]
   );
-
-  // For "roaster" axis, also compute a secondary breakdown (notes per roaster)
-  // so we can show the expandable note list under each roaster tab.
-  const notesByGroupItem = useMemo(() => {
-    if (panelAxis !== "roaster") return new Map<string, { label: string; count: number }[]>();
-    const map = new Map<string, Map<string, number>>();
-    for (const bean of filteredBeans) {
-      const roaster = bean.roaster ?? "Unknown";
-      if (!map.has(roaster)) map.set(roaster, new Map());
-      const noteMap = map.get(roaster)!;
-      const greatOnCount =
-        (bean as any).greatOn?.length ?? (bean as any).greatAs?.length ?? 1;
-      for (const note of bean.notes ?? []) {
-        noteMap.set(note, (noteMap.get(note) ?? 0) + greatOnCount);
-      }
-    }
-    const result = new Map<string, { label: string; count: number }[]>();
-    for (const [roaster, noteMap] of map) {
-      result.set(
-        roaster,
-        [...noteMap.entries()]
-          .map(([label, count]) => ({ label, count }))
-          .sort((a, b) => b.count - a.count)
-      );
-    }
-    return result;
-  }, [filteredBeans, panelAxis]);
+  const topNotesWeighted = useMemo(
+    () => getTopNotesWeightedByGreatOn(filteredBeans),
+    [filteredBeans]
+  );
 
   const heatmapMatrix = useMemo(
     () => buildExtendedMatrix(filteredBeans, heatmapAxis),
@@ -267,77 +272,52 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
   const total = getTotalCoffees(beans);
   const roasterCount = getUniqueRoasterCount(beans);
 
-  // Visible panel items (collapsed or expanded)
-  const visiblePanelCounts = itemsExpanded
-    ? panelCounts
-    : panelCounts.slice(0, PANEL_COLLAPSED_LIMIT);
+  // Tab entries (sorted by coffee count, already done in getNotesByGroup)
+  const tabEntries = [...notesByGroup.entries()];
+  const visibleTabEntries = panelExpanded
+    ? tabEntries
+    : tabEntries.slice(0, PANEL_TAB_COLLAPSED_COUNT);
 
-  // Reset expansion state when axis or origin changes
-  const handlePanelAxisChange = (axis: PanelAxis) => {
-    setPanelAxis(axis);
-    setExpandedItems(new Set());
-    setItemsExpanded(false);
-  };
+  // Active notes for the note cloud
+  const activeNotes = selectedTab
+    ? (notesByGroup.get(selectedTab) ?? [])
+    : topNotesWeighted;
 
-  const handleOriginSelect = (label: string) => {
-    setSelectedOrigin((prev) => (prev === label ? null : label));
-    setExpandedItems(new Set());
-    setItemsExpanded(false);
-  };
+  const panelSubtitle = selectedTab
+    ? `Most liked flavours for ${selectedTab}`
+    : `Most liked tasting notes across all ${
+        panelTabAxis === "roaster"
+          ? "roasters"
+          : panelTabAxis === "varietal"
+          ? "varietals"
+          : "processes"
+      }. Each 'Great as' gets one point.`;
 
-  // ── overlay handlers ──────────────────────────────────────────────────────
+  // ── overlay handlers ────────────────────────────────────────────────────
 
   const showNoteOverlay = useCallback(
     (note: string, clientX: number, clientY: number) => {
-      setNoteOverlay({
-        label: note,
-        lookup: { kind: "note", note },
-        x: clientX,
-        y: clientY,
-      });
+      setNoteOverlay({ label: note, lookup: { kind: "note", note }, x: clientX, y: clientY });
     },
     []
   );
-
   const moveNoteOverlay = useCallback((clientX: number, clientY: number) => {
-    setNoteOverlay((prev) =>
-      prev ? { ...prev, x: clientX, y: clientY } : null
-    );
+    setNoteOverlay((prev) => (prev ? { ...prev, x: clientX, y: clientY } : null));
   }, []);
-
-  const hideNoteOverlay = useCallback(() => {
-    setNoteOverlay(null);
-  }, []);
+  const hideNoteOverlay = useCallback(() => setNoteOverlay(null), []);
 
   const showCellOverlay = useCallback(
-    (
-      row: string,
-      col: string,
-      axis: ExtendedAxis,
-      clientX: number,
-      clientY: number
-    ) => {
-      setNoteOverlay({
-        label: `${row} × ${col}`,
-        lookup: { kind: "cell", row, col, axis },
-        x: clientX,
-        y: clientY,
-      });
+    (row: string, col: string, axis: ExtendedAxis, clientX: number, clientY: number) => {
+      setNoteOverlay({ label: `${row} × ${col}`, lookup: { kind: "cell", row, col, axis }, x: clientX, y: clientY });
     },
     []
   );
-
   const moveCellOverlay = useCallback((clientX: number, clientY: number) => {
-    setNoteOverlay((prev) =>
-      prev ? { ...prev, x: clientX, y: clientY } : null
-    );
+    setNoteOverlay((prev) => (prev ? { ...prev, x: clientX, y: clientY } : null));
   }, []);
+  const hideCellOverlay = useCallback(() => setNoteOverlay(null), []);
 
-  const hideCellOverlay = useCallback(() => {
-    setNoteOverlay(null);
-  }, []);
-
-  // ── render guards ─────────────────────────────────────────────────────────
+  // ── render guards ─────────────────────────────────────────────────────
 
   if (loadStatus === "loading") {
     return (
@@ -346,7 +326,6 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
       </div>
     );
   }
-
   if (loadStatus === "error") {
     return (
       <div className="bean-dashboard bean-dashboard--empty">
@@ -354,18 +333,15 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
       </div>
     );
   }
-
   if (beans.length === 0) {
     return (
       <div className="bean-dashboard bean-dashboard--empty">
-        <p>
-          No coffees tracked yet. Add your first bag and the charts will fill in.
-        </p>
+        <p>No coffees tracked yet. Add your first bag and the charts will fill in.</p>
       </div>
     );
   }
 
-  // ── main render ───────────────────────────────────────────────────────────
+  // ── main render ───────────────────────────────────────────────────────
 
   return (
     <div className="bean-dashboard">
@@ -380,13 +356,10 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
           <span className="dashboard-card__eyebrow">Collection</span>
           <p className="dashboard-stat" aria-live="polite">
             <span className="dashboard-stat__value">{total}</span>
-            <span className="dashboard-stat__unit">
-              {total === 1 ? "coffee" : "coffees"}
-            </span>
+            <span className="dashboard-stat__unit">{total === 1 ? "coffee" : "coffees"}</span>
           </p>
           <p className="dashboard-card__meta dashboard-card__meta--compact">
-            <strong>{roasterCount}</strong>{" "}
-            {roasterCount === 1 ? "roaster" : "roasters"}
+            <strong>{roasterCount}</strong> {roasterCount === 1 ? "roaster" : "roasters"}
           </p>
         </article>
 
@@ -413,16 +386,12 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
                 <li key={entry.label}>
                   <button
                     type="button"
-                    className={`donut-legend__btn${
-                      selectedOrigin === entry.label ? " is-selected" : ""
-                    }`}
+                    className={`donut-legend__btn${selectedOrigin === entry.label ? " is-selected" : ""}`}
                     onClick={() => handleOriginSelect(entry.label)}
                   >
                     <span
                       className="donut-legend__swatch"
-                      style={{
-                        background: CHART_COLORS[i % CHART_COLORS.length],
-                      }}
+                      style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
                     />
                     <span>{entry.label}</span>
                     <span className="donut-legend__count">{entry.count}</span>
@@ -432,7 +401,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
             </ul>
           </article>
 
-          {/* ── 3. Roasters & Tasting Notes (now with axis switcher + collapse) ── */}
+          {/* ── 3. Roasters & Tasting Notes ── */}
           <article
             className={`dashboard-card dashboard-card--origin-notes${activePanel === "roaster-notes" ? " is-active" : ""}`}
             onMouseEnter={() => setActivePanel("roaster-notes")}
@@ -440,183 +409,108 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
           >
             <header className="dashboard-card__header">
               <div>
+                {/* Title row: label + axis selector inline */}
                 <h3 className="dashboard-card__title dashboard-card__title--heatmap">
-                  {/* Axis selector mirroring the heatmap style */}
                   <label className="heatmap-axis-label">
-                    <span className="visually-hidden">Show: </span>
+                    <span className="visually-hidden">Group by: </span>
                     <select
                       className="heatmap-axis-select"
-                      value={panelAxis}
-                      onChange={(e) =>
-                        handlePanelAxisChange(e.target.value as PanelAxis)
-                      }
-                      aria-label="Panel grouping"
+                      value={panelTabAxis}
+                      onChange={(e) => handlePanelTabAxisChange(e.target.value as PanelTabAxis)}
+                      aria-label="Panel tab grouping"
                     >
                       <option value="roaster">Roasters</option>
-                      <option value="notes">Tasting notes</option>
                       <option value="varietal">Varietals</option>
                       <option value="process">Processes</option>
                     </select>
                   </label>
+                  <span className="heatmap-axis-suffix"> &amp; tasting notes</span>
                 </h3>
-                <p className="dashboard-card__subtitle">
-                  {selectedOrigin
-                    ? `Filtered by ${selectedOrigin} · `
-                    : ""}
-                  {panelAxis === "roaster"
-                    ? "Sorted by number of coffees. Expand a roaster to see its tasting notes."
-                    : `All ${PANEL_AXIS_LABELS[panelAxis].toLowerCase()} sorted by count.`}
-                </p>
+                <p className="dashboard-card__subtitle">{panelSubtitle}</p>
               </div>
             </header>
 
-            {/* Item list */}
-            <div className="panel-axis-list">
-              {visiblePanelCounts.length === 0 ? (
-                <p className="dashboard-card__meta">No data yet.</p>
-              ) : (
-                visiblePanelCounts.map((item, i) => {
-                  const isExpanded = expandedItems.has(item.label);
-                  const subNotes =
-                    panelAxis === "roaster"
-                      ? notesByGroupItem.get(item.label) ?? []
-                      : [];
-                  const visibleSubNotes = isExpanded
-                    ? subNotes
-                    : subNotes.slice(0, PANEL_COLLAPSED_LIMIT);
-
-                  return (
-                    <div key={item.label} className="panel-axis-item">
-                      <div className="panel-axis-item__header">
-                        <span
-                          className="panel-axis-item__swatch"
-                          style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
-                        />
-                        <span className="panel-axis-item__label">{item.label}</span>
-                        <span className="panel-axis-item__count">{item.count}</span>
-                        {/* Expand button — only for roasters (sub-notes exist) */}
-                        {panelAxis === "roaster" && subNotes.length > 0 && (
-                          <button
-                            type="button"
-                            className="panel-axis-item__expand-btn"
-                            aria-expanded={isExpanded}
-                            onClick={() =>
-                              setExpandedItems((prev) => {
-                                const next = new Set(prev);
-                                isExpanded
-                                  ? next.delete(item.label)
-                                  : next.add(item.label);
-                                return next;
-                              })
-                            }
-                          >
-                            {isExpanded ? "▲ Hide notes" : "▼ Show notes"}
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Sub-notes for roaster axis */}
-                      {panelAxis === "roaster" && isExpanded && (
-                        <div className="panel-axis-item__subnotes">
-                          <div className="note-cloud note-cloud--sub">
-                            {visibleSubNotes.map((note, j) => {
-                              const scale =
-                                0.7 +
-                                (note.count / (subNotes[0]?.count ?? 1)) * 0.45;
-                              return (
-                                <span
-                                  key={note.label}
-                                  className="note-cloud__tag note-cloud__tag--small"
-                                  style={{
-                                    fontSize: `${scale}rem`,
-                                    background:
-                                      CHART_COLORS[j % CHART_COLORS.length],
-                                  }}
-                                >
-                                  {note.label}
-                                  <span className="note-cloud__count">
-                                    {note.count}
-                                  </span>
-                                </span>
-                              );
-                            })}
-                          </div>
-                          {subNotes.length > PANEL_COLLAPSED_LIMIT && (
-                            <button
-                              type="button"
-                              className="panel-axis-item__expand-btn panel-axis-item__expand-btn--sub"
-                              onClick={() =>
-                                setExpandedItems((prev) => {
-                                  // We reuse the same expanded state but track
-                                  // sub-expansion via a secondary key
-                                  const subKey = `${item.label}::subnotes`;
-                                  const next = new Set(prev);
-                                  next.has(subKey)
-                                    ? next.delete(subKey)
-                                    : next.add(subKey);
-                                  // Always keep parent expanded
-                                  next.add(item.label);
-                                  return next;
-                                })
-                              }
-                            >
-                              {expandedItems.has(`${item.label}::subnotes`)
-                                ? `▲ Show fewer notes`
-                                : `▼ Show all ${subNotes.length} notes`}
-                            </button>
-                          )}
-                          {/* Re-render with full sub-notes if sub-expanded */}
-                          {expandedItems.has(`${item.label}::subnotes`) &&
-                            subNotes.length > PANEL_COLLAPSED_LIMIT && (
-                              <div className="note-cloud note-cloud--sub">
-                                {subNotes
-                                  .slice(PANEL_COLLAPSED_LIMIT)
-                                  .map((note, j) => {
-                                    const scale =
-                                      0.7 +
-                                      (note.count / (subNotes[0]?.count ?? 1)) *
-                                        0.45;
-                                    return (
-                                      <span
-                                        key={note.label}
-                                        className="note-cloud__tag note-cloud__tag--small"
-                                        style={{
-                                          fontSize: `${scale}rem`,
-                                          background:
-                                            CHART_COLORS[
-                                              (j + PANEL_COLLAPSED_LIMIT) %
-                                                CHART_COLORS.length
-                                            ],
-                                        }}
-                                      >
-                                        {note.label}
-                                        <span className="note-cloud__count">
-                                          {note.count}
-                                        </span>
-                                      </span>
-                                    );
-                                  })}
-                              </div>
-                            )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-
-              {/* Show more / show fewer for the top-level list */}
-              {panelCounts.length > PANEL_COLLAPSED_LIMIT && (
+            <div className="origin-notes">
+              {/* Tab strip */}
+              <div className="origin-notes__tabs" role="tablist">
+                {/* "All" pill */}
                 <button
                   type="button"
-                  className="panel-axis-showmore"
-                  onClick={() => setItemsExpanded((v) => !v)}
+                  role="tab"
+                  aria-selected={selectedTab === null}
+                  className={`origin-tab${selectedTab === null ? " is-selected" : ""}`}
+                  onClick={() => setSelectedTab(null)}
                 >
-                  {itemsExpanded
-                    ? `▲ Show fewer`
-                    : `▼ Show all ${panelCounts.length} ${PANEL_AXIS_LABELS[panelAxis].toLowerCase()}`}
+                  All
                 </button>
-              )}
+
+                {visibleTabEntries.map(([groupKey]) => (
+                  <button
+                    key={groupKey}
+                    type="button"
+                    role="tab"
+                    aria-selected={selectedTab === groupKey}
+                    className={`origin-tab${selectedTab === groupKey ? " is-selected" : ""}`}
+                    onClick={() =>
+                      setSelectedTab((prev) => (prev === groupKey ? null : groupKey))
+                    }
+                  >
+                    {groupKey}
+                  </button>
+                ))}
+
+                {/* Expand / collapse tab list */}
+                {tabEntries.length > PANEL_TAB_COLLAPSED_COUNT && (
+                  <button
+                    type="button"
+                    className="origin-tab origin-tab--more"
+                    onClick={() => setPanelExpanded((v) => !v)}
+                    aria-label={panelExpanded ? "Show fewer" : `Show all ${tabEntries.length}`}
+                  >
+                    {panelExpanded ? "← Less" : `+${tabEntries.length - PANEL_TAB_COLLAPSED_COUNT} more`}
+                  </button>
+                )}
+              </div>
+
+              {/* Note cloud panel */}
+              <div className="origin-notes__panel">
+                <div className="origin-notes__detail">
+                  <h4>{selectedTab ?? "Most liked"}</h4>
+                  <div className="note-cloud">
+                    {activeNotes.length === 0 ? (
+                      <p className="dashboard-card__meta">No notes yet</p>
+                    ) : (
+                      activeNotes.map((note, i) => {
+                        const scale =
+                          0.75 + (note.count / (activeNotes[0]?.count ?? 1)) * 0.5;
+                        const isHovered = noteOverlay?.label === note.label;
+                        return (
+                          <span
+                            key={note.label}
+                            className="note-cloud__tag"
+                            style={{
+                              fontSize: `${scale}rem`,
+                              background: CHART_COLORS[i % CHART_COLORS.length],
+                              cursor: "default",
+                              opacity: isHovered || !noteOverlay ? 1 : 0.5,
+                            }}
+                            onMouseEnter={(e) =>
+                              showNoteOverlay(note.label, e.clientX, e.clientY)
+                            }
+                            onMouseMove={(e) =>
+                              moveNoteOverlay(e.clientX, e.clientY)
+                            }
+                            onMouseLeave={hideNoteOverlay}
+                          >
+                            {note.label}
+                            <span className="note-cloud__count">{note.count}</span>
+                          </span>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </article>
         </div>
@@ -653,27 +547,17 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
                 <li
                   key={entry.label}
                   className="bar-chart__row"
-                  onMouseMove={(e) => {
-                    if (isHovered) moveNoteOverlay(e.clientX, e.clientY);
-                  }}
+                  onMouseMove={(e) => { if (isHovered) moveNoteOverlay(e.clientX, e.clientY); }}
                 >
                   <button
                     type="button"
                     className={`bar-chart__label${isHovered ? " is-highlight" : ""}`}
-                    onMouseEnter={(e) =>
-                      showNoteOverlay(entry.label, e.clientX, e.clientY)
-                    }
-                    onMouseMove={(e) =>
-                      showNoteOverlay(entry.label, e.clientX, e.clientY)
-                    }
+                    onMouseEnter={(e) => showNoteOverlay(entry.label, e.clientX, e.clientY)}
+                    onMouseMove={(e) => showNoteOverlay(entry.label, e.clientX, e.clientY)}
                     onMouseLeave={hideNoteOverlay}
                     onFocus={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();
-                      showNoteOverlay(
-                        entry.label,
-                        rect.right,
-                        rect.top + rect.height / 2
-                      );
+                      showNoteOverlay(entry.label, rect.right, rect.top + rect.height / 2);
                     }}
                     onBlur={hideNoteOverlay}
                   >
@@ -696,7 +580,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
           </ul>
         </article>
 
-        {/* ── 5. Heatmap (now with varietal + process axes) ── */}
+        {/* ── 5. Heatmap ── */}
         <article
           className={`dashboard-card dashboard-card--matrix${activePanel === "heatmap" ? " is-active" : ""}`}
           onMouseEnter={() => setActivePanel("heatmap")}
@@ -710,9 +594,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
                   <select
                     className="heatmap-axis-select"
                     value={heatmapAxis}
-                    onChange={(e) =>
-                      setHeatmapAxis(e.target.value as ExtendedAxis)
-                    }
+                    onChange={(e) => setHeatmapAxis(e.target.value as ExtendedAxis)}
                     aria-label="Heatmap row axis"
                   >
                     <option value="roaster">Roasters</option>
@@ -731,18 +613,13 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
           <Heatmap
             matrix={heatmapMatrix}
             rowLabel={
-              heatmapAxis === "roaster"
-                ? "Roaster"
-                : heatmapAxis === "notes"
-                ? "Note"
-                : heatmapAxis === "varietal"
-                ? "Varietal"
-                : "Process"
+              heatmapAxis === "roaster" ? "Roaster"
+              : heatmapAxis === "notes" ? "Note"
+              : heatmapAxis === "varietal" ? "Varietal"
+              : "Process"
             }
             axis={heatmapAxis}
-            onCellOverlay={(row, col, x, y) =>
-              showCellOverlay(row, col, heatmapAxis, x, y)
-            }
+            onCellOverlay={(row, col, x, y) => showCellOverlay(row, col, heatmapAxis, x, y)}
             onCellOverlayMove={moveCellOverlay}
             onCellOverlayHide={hideCellOverlay}
           />
@@ -840,14 +717,7 @@ function DonutChart({ entries, selected, onSelect }: DonutChartProps) {
       role="img"
       aria-label="Coffees by country of origin"
     >
-      <circle
-        cx={cx}
-        cy={cy}
-        r={radius}
-        fill="none"
-        stroke="var(--cream-mid)"
-        strokeWidth={stroke}
-      />
+      <circle cx={cx} cy={cy} r={radius} fill="none" stroke="var(--cream-mid)" strokeWidth={stroke} />
       {entries.map((entry, i) => {
         const fraction = entry.count / total;
         const dash = fraction * circumference;
@@ -855,25 +725,18 @@ function DonutChart({ entries, selected, onSelect }: DonutChartProps) {
         const segment = (
           <circle
             key={entry.label}
-            cx={cx}
-            cy={cy}
-            r={radius}
+            cx={cx} cy={cy} r={radius}
             fill="none"
             stroke={CHART_COLORS[i % CHART_COLORS.length]}
             strokeWidth={isSelected ? selectedStroke : stroke}
             strokeDasharray={`${dash} ${circumference - dash}`}
             strokeDashoffset={-offset}
             transform={`rotate(-90 ${cx} ${cy})`}
-            className={`donut-segment${
-              selected && !isSelected ? " is-dimmed" : ""
-            }${isSelected ? " is-selected" : ""}`}
+            className={`donut-segment${selected && !isSelected ? " is-dimmed" : ""}${isSelected ? " is-selected" : ""}`}
             style={{ cursor: "pointer" }}
             onClick={() => onSelect(entry.label)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onSelect(entry.label);
-              }
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(entry.label); }
             }}
             tabIndex={0}
             role="button"
@@ -883,13 +746,7 @@ function DonutChart({ entries, selected, onSelect }: DonutChartProps) {
         offset += dash;
         return segment;
       })}
-      <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
-        dominantBaseline="central"
-        className="donut-chart__center"
-      >
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" className="donut-chart__center">
         {total}
       </text>
     </svg>
@@ -907,14 +764,7 @@ interface HeatmapProps {
   onCellOverlayHide: () => void;
 }
 
-function Heatmap({
-  matrix,
-  rowLabel,
-  axis: _axis,
-  onCellOverlay,
-  onCellOverlayMove,
-  onCellOverlayHide,
-}: HeatmapProps) {
+function Heatmap({ matrix, rowLabel, axis: _axis, onCellOverlay, onCellOverlayMove, onCellOverlayHide }: HeatmapProps) {
   const [hovered, setHovered] = useState<MatrixCell | null>(null);
   const { rows, cols, cells, max } = matrix;
 
@@ -923,82 +773,50 @@ function Heatmap({
   }
 
   const cellMap = new Map(cells.map((c) => [`${c.row}::${c.col}`, c.count]));
-
   const ROW_HEADER_W = "minmax(6rem, max-content)";
   const COL_W = "minmax(2.5rem, 1fr)";
   const gridTemplateColumns = [ROW_HEADER_W, ...cols.map(() => COL_W)].join(" ");
 
   return (
     <div className="heatmap-wrap">
-      <div
-        className="heatmap-grid"
-        style={{ gridTemplateColumns }}
-        role="table"
-        aria-label="Brew-method heatmap"
-      >
-        {/* Header row */}
-        <div className="heatmap__corner" role="columnheader">
-          {rowLabel} / Method
-        </div>
+      <div className="heatmap-grid" style={{ gridTemplateColumns }} role="table" aria-label="Brew-method heatmap">
+        <div className="heatmap__corner" role="columnheader">{rowLabel} / Method</div>
         {cols.map((col) => (
-          <div key={col} className="heatmap__col-head" role="columnheader">
-            {col}
-          </div>
+          <div key={col} className="heatmap__col-head" role="columnheader">{col}</div>
         ))}
-
-        {/* Data rows */}
         {rows.map((row) => (
           <>
-            <div key={`${row}--head`} className="heatmap__row-head" role="rowheader">
-              {row}
-            </div>
+            <div key={`${row}--head`} className="heatmap__row-head" role="rowheader">{row}</div>
             {cols.map((col) => {
               const count = cellMap.get(`${row}::${col}`) ?? 0;
               const intensity = count / max;
               const isHot = hovered?.row === row && hovered?.col === col;
-
               return (
                 <div
                   key={`${row}::${col}`}
                   role="cell"
                   className={`heatmap__cell${count ? "" : " is-empty"}${isHot ? " is-hot" : ""}`}
                   style={{
-                    background:
-                      count > 0
-                        ? `color-mix(in srgb, var(--yellow) ${Math.round(
-                            20 + intensity * 70
-                          )}%, var(--pink-soft))`
-                        : undefined,
+                    background: count > 0
+                      ? `color-mix(in srgb, var(--yellow) ${Math.round(20 + intensity * 70)}%, var(--pink-soft))`
+                      : undefined,
                     cursor: count ? "pointer" : "default",
                   }}
-                  aria-label={
-                    count
-                      ? `${row}, ${col}: ${count}`
-                      : `${row}, ${col}: no data`
-                  }
+                  aria-label={count ? `${row}, ${col}: ${count}` : `${row}, ${col}: no data`}
                   onMouseEnter={(e) => {
                     if (!count) return;
                     setHovered({ row, col, count });
                     onCellOverlay(row, col, e.clientX, e.clientY);
                   }}
-                  onMouseMove={(e) => {
-                    if (!count) return;
-                    onCellOverlayMove(e.clientX, e.clientY);
-                  }}
-                  onMouseLeave={() => {
-                    setHovered(null);
-                    onCellOverlayHide();
-                  }}
+                  onMouseMove={(e) => { if (!count) return; onCellOverlayMove(e.clientX, e.clientY); }}
+                  onMouseLeave={() => { setHovered(null); onCellOverlayHide(); }}
                   onFocus={(e) => {
                     if (!count) return;
                     const rect = e.currentTarget.getBoundingClientRect();
                     setHovered({ row, col, count });
                     onCellOverlay(row, col, rect.right, rect.top);
                   }}
-                  onBlur={() => {
-                    setHovered(null);
-                    onCellOverlayHide();
-                  }}
+                  onBlur={() => { setHovered(null); onCellOverlayHide(); }}
                   tabIndex={count ? 0 : -1}
                 >
                   {count || ""}

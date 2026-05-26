@@ -2294,6 +2294,19 @@ h2 {
   background: var(--cream-mid);
 }
 
+/* ── "…more" tab pill in the Roasters & Tasting Notes card ─────────────── */
+/* Sits alongside the existing .origin-tab styles; add to your dashboard CSS */
+
+.origin-tab--more {
+  font-style: italic;
+  opacity: 0.7;
+  border-style: dashed;   /* visually distinct from regular tabs */
+}
+
+.origin-tab--more:hover {
+  opacity: 1;
+}
+
 .origin-tab.is-selected {
   background: linear-gradient(135deg, var(--yellow) 0%, #ffe066 100%);
   border-color: rgba(255, 216, 77, 0.5);

@@ -354,6 +354,144 @@ export function beanHasCategory(bean: BeanRecord, category: NoteCategory): boole
   return getBeanCategories(bean.notes).has(category);
 }
 
+export type GroupAxis = "roaster" | "varietal" | "process" | "origin";
+
+export function normaliseBeanField(value: string | undefined | null): string {
+  if (!value || value.trim() === "") return "Unknown";
+  return value.includes(",") ? "Mixed" : value.trim();
+}
+
+export function getBeanGroupKey(bean: BeanRecord, axis: GroupAxis): string {
+  switch (axis) {
+    case "roaster":
+      return bean.roaster.trim() || "Unknown";
+    case "origin":
+      return bean.origin.trim() || "Unknown";
+    case "varietal":
+      return normaliseBeanField((bean as Record<string, string | undefined>).varietal);
+    case "process":
+      return normaliseBeanField((bean as Record<string, string | undefined>).process);
+  }
+}
+
+export function getGroupCoffeeCounts(
+  beans: BeanRecord[],
+  axis: GroupAxis
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const bean of beans) {
+    const key = getBeanGroupKey(bean, axis);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function filterEntriesByMinSample(
+  entries: CountEntry[],
+  coffeeCounts: Map<string, number>,
+  minSample: number
+): CountEntry[] {
+  if (minSample <= 1) return entries;
+  return entries.filter((entry) => (coffeeCounts.get(entry.label) ?? 0) >= minSample);
+}
+
+/** Count coffees (not note occurrences) that contain each tasting note. */
+export function getNoteCoffeeCounts(beans: BeanRecord[]): CountEntry[] {
+  const map = new Map<string, { label: string; count: number }>();
+
+  for (const bean of beans) {
+    for (const note of bean.notes) {
+      const key = normalizeKey(note);
+      if (!key) continue;
+      const existing = map.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(key, { label: displayLabel(note), count: 1 });
+      }
+    }
+  }
+
+  return [...map.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
+/** Count coffees that contain each aggregate flavour category. */
+export function getNoteCategoryCoffeeCounts(beans: BeanRecord[]): CountEntry[] {
+  const map = new Map<NoteCategory, number>();
+
+  for (const bean of beans) {
+    for (const category of getBeanCategories(bean.notes)) {
+      map.set(category, (map.get(category) ?? 0) + 1);
+    }
+  }
+
+  return NOTE_CATEGORIES.map((label) => ({
+    label,
+    count: map.get(label) ?? 0,
+  }))
+    .filter((entry) => entry.count > 0)
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
+export interface GroupCategoryBars {
+  group: string;
+  coffeeCount: number;
+  categories: CountEntry[];
+}
+
+/** Per-group aggregate category counts (one point per coffee per category). */
+export function getCategoryBarsByGroup(
+  beans: BeanRecord[],
+  axis: GroupAxis,
+  minSample: number
+): GroupCategoryBars[] {
+  const groupCounts = getGroupCoffeeCounts(beans, axis);
+  const groupCategoryCounts = new Map<string, Map<NoteCategory, number>>();
+
+  for (const bean of beans) {
+    const groupKey = getBeanGroupKey(bean, axis);
+    if (!groupCategoryCounts.has(groupKey)) {
+      groupCategoryCounts.set(groupKey, new Map());
+    }
+    const categoryMap = groupCategoryCounts.get(groupKey)!;
+
+    for (const category of getBeanCategories(bean.notes)) {
+      categoryMap.set(category, (categoryMap.get(category) ?? 0) + 1);
+    }
+  }
+
+  return [...groupCategoryCounts.entries()]
+    .filter(([group]) => (groupCounts.get(group) ?? 0) >= minSample)
+    .sort(
+      (a, b) => (groupCounts.get(b[0]) ?? 0) - (groupCounts.get(a[0]) ?? 0)
+    )
+    .map(([group, categoryMap]) => ({
+      group,
+      coffeeCount: groupCounts.get(group) ?? 0,
+      categories: NOTE_CATEGORIES.map((label) => ({
+        label,
+        count: categoryMap.get(label) ?? 0,
+      }))
+        .filter((entry) => entry.count > 0)
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+    }));
+}
+
+export function filterMapByMinSample<T>(
+  map: Map<string, T>,
+  coffeeCounts: Map<string, number>,
+  minSample: number
+): Map<string, T> {
+  if (minSample <= 1) return map;
+  const result = new Map<string, T>();
+  for (const [key, value] of map) {
+    if ((coffeeCounts.get(key) ?? 0) >= minSample) {
+      result.set(key, value);
+    }
+  }
+  return result;
+}
+
 export function getOriginCounts(beans: BeanRecord[]): CountEntry[] {
   return countOccurrences(
     beans.map((b) => (b.origin.trim() ? b.origin : "Unknown"))

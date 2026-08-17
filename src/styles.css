@@ -1816,6 +1816,97 @@ h2 {
   margin-top: 0.5rem;
 }
 
+.dashboard-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.dashboard-toolbar__control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.dashboard-toolbar__label {
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.dashboard-toolbar__select {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+  border: 1px solid var(--border-warm);
+  border-radius: var(--radius-pill);
+  background: var(--cream);
+  padding: 0.28rem 0.75rem;
+  cursor: pointer;
+}
+
+.dashboard-toolbar__select:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+.dashboard-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dashboard-toggle__label {
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.dashboard-toggle__input:focus-visible + .dashboard-toggle__switch {
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+.dashboard-toggle__switch {
+  position: relative;
+  width: 2.5rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: var(--cream-mid);
+  border: 1px solid var(--border-warm);
+  transition: background 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.dashboard-toggle__switch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.15rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translateY(-50%);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.dashboard-toggle__input:checked + .dashboard-toggle__switch {
+  background: var(--yellow-soft);
+  border-color: var(--yellow);
+}
+
+.dashboard-toggle__input:checked + .dashboard-toggle__switch::after {
+  transform: translate(1.05rem, -50%);
+  background: var(--ink);
+}
+
 .bean-dashboard--loading,
 .bean-dashboard--empty {
   padding: 2rem 1rem;
@@ -1887,6 +1978,53 @@ h2 {
   grid-column: 1 / -1;
 }
 
+.dashboard-card--category-bars {
+  grid-column: 1 / -1;
+}
+
+.group-category-bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.group-category-bars__group {
+  padding: 0.85rem 0.9rem;
+  border-radius: calc(var(--radius-lg) - 4px);
+  background: var(--cream-mid);
+  border: 1px solid var(--border);
+}
+
+.group-category-bars__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.group-category-bars__title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.group-category-bars__meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.bar-chart--compact {
+  gap: 0.45rem;
+}
+
+.bar-chart--compact .bar-chart__row {
+  grid-template-columns: minmax(4.5rem, 34%) 1fr auto;
+}
+
 @media (max-width: 768px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -1895,7 +2033,8 @@ h2 {
   /* Clear all explicit column/row placements so cards stack naturally */
   .dashboard-card--stat,
   .dashboard-card--notes,
-  .dashboard-card--matrix {
+  .dashboard-card--matrix,
+  .dashboard-card--category-bars {
     grid-column: 1 / -1;
     grid-row: auto;
     justify-self: stretch;

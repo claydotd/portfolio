@@ -2,14 +2,19 @@ import { useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { BeanRecord } from "../lib/beanStats";
 import {
+  buildCategoryCorrelationMatrix,
   buildCorrelationMatrix,
+  beanHasCategory,
   filterBeansByOrigin,
-  getNoteCounts,
+  getCategoriesByGroup,
+  getCategoryCountsWeightedByGreatOn,
+  getNoteCategoryCounts,
   getOriginCounts,
   getTotalCoffees,
   getUniqueRoasterCount,
   type HeatmapRowAxis,
   type MatrixCell,
+  type NoteCategory,
 } from "../lib/beanStats";
 
 const CHART_COLORS = [
@@ -44,7 +49,7 @@ interface BeanDashboardProps {
 interface HoverOverlayState {
   label: string;
   lookup:
-    | { kind: "note"; note: string }
+    | { kind: "category"; category: NoteCategory }
     | { kind: "cell"; row: string; col: string; axis: ExtendedAxis };
   x: number;
   y: number;
@@ -66,7 +71,11 @@ function buildExtendedMatrix(
   beans: BeanRecord[],
   axis: ExtendedAxis
 ): ReturnType<typeof buildCorrelationMatrix> {
-  if (axis === "roaster" || axis === "notes") {
+  if (axis === "notes") {
+    return buildCategoryCorrelationMatrix(beans);
+  }
+
+  if (axis === "roaster") {
     return buildCorrelationMatrix(beans, axis as HeatmapRowAxis);
   }
 
@@ -111,78 +120,6 @@ function buildExtendedMatrix(
   return { rows, cols, cells, max: max || 1 };
 }
 
-/**
- * Group tasting notes by a given tab axis (roaster / varietal / process),
- * weighting by greatOn/greatAs count. Returns a map of groupKey → sorted notes.
- */
-function getNotesByGroup(
-  beans: BeanRecord[],
-  axis: PanelTabAxis
-): Map<string, { label: string; count: number }[]> {
-  const groupNotes = new Map<string, Map<string, number>>();
-
-  for (const bean of beans) {
-    const groupKey =
-      axis === "roaster"
-        ? (bean.roaster ?? "Unknown")
-        : axis === "varietal"
-        ? normaliseField((bean as any).varietal)
-        : normaliseField((bean as any).process);
-
-    if (!groupNotes.has(groupKey)) groupNotes.set(groupKey, new Map());
-    const noteMap = groupNotes.get(groupKey)!;
-    const greatOnCount =
-      (bean as any).greatOn?.length ?? (bean as any).greatAs?.length ?? 1;
-    for (const note of bean.notes ?? []) {
-      noteMap.set(note, (noteMap.get(note) ?? 0) + greatOnCount);
-    }
-  }
-
-  // Sort group keys by total coffee count (descending)
-  const groupCoffeeCount = new Map<string, number>();
-  for (const bean of beans) {
-    const groupKey =
-      axis === "roaster"
-        ? (bean.roaster ?? "Unknown")
-        : axis === "varietal"
-        ? normaliseField((bean as any).varietal)
-        : normaliseField((bean as any).process);
-    groupCoffeeCount.set(groupKey, (groupCoffeeCount.get(groupKey) ?? 0) + 1);
-  }
-
-  const result = new Map<string, { label: string; count: number }[]>();
-  // Sort entries by coffee count descending
-  const sortedEntries = [...groupNotes.entries()].sort(
-    (a, b) => (groupCoffeeCount.get(b[0]) ?? 0) - (groupCoffeeCount.get(a[0]) ?? 0)
-  );
-  for (const [groupKey, noteMap] of sortedEntries) {
-    const sorted = [...noteMap.entries()]
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count);
-    result.set(groupKey, sorted);
-  }
-  return result;
-}
-
-/**
- * Aggregate tasting notes across ALL beans weighted by greatOn entries.
- */
-function getTopNotesWeightedByGreatOn(
-  beans: BeanRecord[]
-): { label: string; count: number }[] {
-  const noteMap = new Map<string, number>();
-  for (const bean of beans) {
-    const greatOnCount =
-      (bean as any).greatOn?.length ?? (bean as any).greatAs?.length ?? 1;
-    for (const note of bean.notes ?? []) {
-      noteMap.set(note, (noteMap.get(note) ?? 0) + greatOnCount);
-    }
-  }
-  return [...noteMap.entries()]
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count);
-}
-
 function getBeansForOverlay(
   beans: BeanRecord[],
   lookup: HoverOverlayState["lookup"],
@@ -190,8 +127,8 @@ function getBeansForOverlay(
 ): { roaster: string; name: string; methods: string[] }[] {
   let matched: BeanRecord[];
 
-  if (lookup.kind === "note") {
-    matched = beans.filter((b) => b.notes?.includes(lookup.note));
+  if (lookup.kind === "category") {
+    matched = beans.filter((b) => beanHasCategory(b, lookup.category));
   } else {
     const { row, col, axis } = lookup;
     matched = beans.filter((b) => {
@@ -199,7 +136,7 @@ function getBeansForOverlay(
         (b as any).greatOn ?? (b as any).greatAs ?? [];
       const hasMethod = methods.includes(col);
       if (axis === "roaster") return (b.roaster ?? "Unknown") === row && hasMethod;
-      if (axis === "notes") return b.notes?.includes(row) && hasMethod;
+      if (axis === "notes") return beanHasCategory(b, row as NoteCategory) && hasMethod;
       if (axis === "varietal") return normaliseField((b as any).varietal) === row && hasMethod;
       if (axis === "process") return normaliseField((b as any).process) === row && hasMethod;
       return false;
@@ -245,16 +182,15 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
     [beans, selectedOrigin]
   );
 
-  const noteCounts = useMemo(() => getNoteCounts(filteredBeans), [filteredBeans]);
+  const noteCounts = useMemo(() => getNoteCategoryCounts(filteredBeans), [filteredBeans]);
   const originCounts = useMemo(() => getOriginCounts(beans), [beans]);
 
-  // notesByGroup uses filteredBeans so origin filter flows through
   const notesByGroup = useMemo(
-    () => getNotesByGroup(filteredBeans, panelTabAxis),
+    () => getCategoriesByGroup(filteredBeans, panelTabAxis, normaliseField),
     [filteredBeans, panelTabAxis]
   );
   const topNotesWeighted = useMemo(
-    () => getTopNotesWeightedByGreatOn(filteredBeans),
+    () => getCategoryCountsWeightedByGreatOn(filteredBeans),
     [filteredBeans]
   );
 
@@ -284,8 +220,8 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
     : topNotesWeighted;
 
   const panelSubtitle = selectedTab
-    ? `Most liked flavours for ${selectedTab}`
-    : `Most liked tasting notes across all ${
+    ? `Most liked flavour categories for ${selectedTab}`
+    : `Most liked flavour categories across all ${
         panelTabAxis === "roaster"
           ? "roasters"
           : panelTabAxis === "varietal"
@@ -296,8 +232,13 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
   // ── overlay handlers ────────────────────────────────────────────────────
 
   const showNoteOverlay = useCallback(
-    (note: string, clientX: number, clientY: number) => {
-      setNoteOverlay({ label: note, lookup: { kind: "note", note }, x: clientX, y: clientY });
+    (category: NoteCategory, clientX: number, clientY: number) => {
+      setNoteOverlay({
+        label: category,
+        lookup: { kind: "category", category },
+        x: clientX,
+        y: clientY,
+      });
     },
     []
   );
@@ -478,7 +419,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
                   <h4>{selectedTab ?? "Most liked"}</h4>
                   <div className="note-cloud">
                     {activeNotes.length === 0 ? (
-                      <p className="dashboard-card__meta">No notes yet</p>
+                      <p className="dashboard-card__meta">No flavour categories yet</p>
                     ) : (
                       activeNotes.map((note, i) => {
                         const scale =
@@ -495,7 +436,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
                               opacity: isHovered || !noteOverlay ? 1 : 0.5,
                             }}
                             onMouseEnter={(e) =>
-                              showNoteOverlay(note.label, e.clientX, e.clientY)
+                              showNoteOverlay(note.label as NoteCategory, e.clientX, e.clientY)
                             }
                             onMouseMove={(e) =>
                               moveNoteOverlay(e.clientX, e.clientY)
@@ -524,7 +465,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
           <header className="dashboard-card__header">
             <div>
               <h3 className="dashboard-card__title">Tasting notes</h3>
-              <p className="dashboard-card__subtitle">Most common flavours</p>
+              <p className="dashboard-card__subtitle">Most common flavour categories</p>
               {selectedOrigin && (
                 <p className="dashboard-filter-hint">
                   Filtered by <em>{selectedOrigin}</em> —{" "}
@@ -552,12 +493,20 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
                   <button
                     type="button"
                     className={`bar-chart__label${isHovered ? " is-highlight" : ""}`}
-                    onMouseEnter={(e) => showNoteOverlay(entry.label, e.clientX, e.clientY)}
-                    onMouseMove={(e) => showNoteOverlay(entry.label, e.clientX, e.clientY)}
+                    onMouseEnter={(e) =>
+                      showNoteOverlay(entry.label as NoteCategory, e.clientX, e.clientY)
+                    }
+                    onMouseMove={(e) =>
+                      showNoteOverlay(entry.label as NoteCategory, e.clientX, e.clientY)
+                    }
                     onMouseLeave={hideNoteOverlay}
                     onFocus={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();
-                      showNoteOverlay(entry.label, rect.right, rect.top + rect.height / 2);
+                      showNoteOverlay(
+                        entry.label as NoteCategory,
+                        rect.right,
+                        rect.top + rect.height / 2
+                      );
                     }}
                     onBlur={hideNoteOverlay}
                   >
@@ -614,7 +563,7 @@ export function BeanDashboard({ beans, loadStatus }: BeanDashboardProps) {
             matrix={heatmapMatrix}
             rowLabel={
               heatmapAxis === "roaster" ? "Roaster"
-              : heatmapAxis === "notes" ? "Note"
+              : heatmapAxis === "notes" ? "Category"
               : heatmapAxis === "varietal" ? "Varietal"
               : "Process"
             }
@@ -664,7 +613,7 @@ function NoteCoffeeOverlay({ label, x, y, coffees }: NoteCoffeeOverlayProps) {
     >
       <p className="note-coffee-overlay__title">{label}</p>
       {coffees.length === 0 ? (
-        <p className="note-coffee-overlay__empty">No coffees with this note</p>
+        <p className="note-coffee-overlay__empty">No coffees in this category</p>
       ) : (
         <ul className="note-coffee-overlay__list">
           {coffees.map((coffee) => (

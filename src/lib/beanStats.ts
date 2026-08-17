@@ -12,6 +12,170 @@ export interface CountEntry {
   count: number;
 }
 
+export const NOTE_CATEGORIES = [
+  "Fruity",
+  "Nutty",
+  "Sweet",
+  "Floral",
+  "Spicy",
+  "Earthy",
+] as const;
+
+export type NoteCategory = (typeof NOTE_CATEGORIES)[number];
+
+const CATEGORY_KEYWORDS: Record<NoteCategory, string[]> = {
+  Fruity: [
+    "fruit",
+    "berry",
+    "cherry",
+    "mango",
+    "peach",
+    "lemon",
+    "lime",
+    "orange",
+    "apple",
+    "grape",
+    "plum",
+    "apricot",
+    "banana",
+    "cranberry",
+    "raspberry",
+    "stonefruit",
+    "stone fruit",
+    "forest fruit",
+    "dried fruit",
+    "raisin",
+    "citrus",
+    "tropical",
+    "pineapple",
+    "passion",
+    "guava",
+    "blueberry",
+    "strawberry",
+    "blackcurrant",
+    "currant",
+    "nectarine",
+    "melon",
+    "fig",
+    "date",
+    "pomegranate",
+    "lychee",
+    "kiwi",
+    "grapefruit",
+    "tangerine",
+  ],
+  Nutty: [
+    "nut",
+    "almond",
+    "hazelnut",
+    "peanut",
+    "walnut",
+    "pecan",
+    "pistachio",
+    "cashew",
+    "macadamia",
+    "marzipan",
+    "nougat",
+  ],
+  Sweet: [
+    "caramel",
+    "chocolate",
+    "honey",
+    "sugar",
+    "fudge",
+    "vanilla",
+    "toffee",
+    "maple",
+    "molasses",
+    "biscuit",
+    "cookie",
+    "cake",
+    "syrup",
+    "cocoa",
+    "brown sugar",
+    "sweet",
+    "candy",
+    "butterscotch",
+    "praline",
+  ],
+  Floral: [
+    "floral",
+    "flower",
+    "jasmine",
+    "honeysuckle",
+    "rose",
+    "lavender",
+    "bergamot",
+    "chamomile",
+    "elderflower",
+    "violet",
+    "hibiscus",
+  ],
+  Spicy: [
+    "spice",
+    "spicy",
+    "cinnamon",
+    "clove",
+    "cardamom",
+    "pepper",
+    "anise",
+    "nutmeg",
+    "ginger",
+    "allspice",
+    "coriander",
+  ],
+  Earthy: [
+    "earth",
+    "herb",
+    "herbaceous",
+    "woody",
+    "tobacco",
+    "cedar",
+    "moss",
+    "forest",
+    "mushroom",
+    "savory",
+    "vegetal",
+    "green",
+    "hay",
+    "leather",
+    "smoke",
+    "smoky",
+    "peat",
+  ],
+};
+
+function keywordMatches(normalized: string, keyword: string): boolean {
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = escaped.replace(/(\w+)$/, "$1s?");
+  return new RegExp(`\\b${pattern}\\b`).test(normalized);
+}
+
+/** Map a tasting note to one of the broad flavour categories, if recognised. */
+export function getNoteCategory(note: string): NoteCategory | null {
+  const normalized = note.trim().toLowerCase();
+  if (!normalized) return null;
+
+  for (const category of NOTE_CATEGORIES) {
+    for (const keyword of CATEGORY_KEYWORDS[category]) {
+      if (keywordMatches(normalized, keyword)) {
+        return category;
+      }
+    }
+  }
+
+  return null;
+}
+
+function getBeanCategories(notes: string[]): Set<NoteCategory> {
+  const categories = new Set<NoteCategory>();
+  for (const note of notes) {
+    const category = getNoteCategory(note);
+    if (category) categories.add(category);
+  }
+  return categories;
+}
+
 export interface MatrixCell {
   row: string;
   col: string;
@@ -55,6 +219,139 @@ export function getUniqueRoasterCount(beans: BeanRecord[]): number {
 
 export function getNoteCounts(beans: BeanRecord[]): CountEntry[] {
   return countOccurrences(beans.flatMap((b) => b.notes));
+}
+
+export function getNoteCategoryCounts(beans: BeanRecord[]): CountEntry[] {
+  const map = new Map<NoteCategory, number>();
+
+  for (const bean of beans) {
+    for (const note of bean.notes) {
+      const category = getNoteCategory(note);
+      if (!category) continue;
+      map.set(category, (map.get(category) ?? 0) + 1);
+    }
+  }
+
+  return NOTE_CATEGORIES.map((label) => ({
+    label,
+    count: map.get(label) ?? 0,
+  }))
+    .filter((entry) => entry.count > 0)
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
+/** Categories on a bean, weighted by how many brew methods it shines on. */
+export function getCategoryCountsWeightedByGreatOn(
+  beans: BeanRecord[]
+): CountEntry[] {
+  const map = new Map<NoteCategory, number>();
+
+  for (const bean of beans) {
+    const weight = bean.greatOn?.length ?? 1;
+    for (const category of getBeanCategories(bean.notes)) {
+      map.set(category, (map.get(category) ?? 0) + weight);
+    }
+  }
+
+  return NOTE_CATEGORIES.map((label) => ({
+    label,
+    count: map.get(label) ?? 0,
+  }))
+    .filter((entry) => entry.count > 0)
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
+export function getCategoriesByGroup(
+  beans: BeanRecord[],
+  axis: "roaster" | "varietal" | "process",
+  normaliseField: (value: string | undefined | null) => string
+): Map<string, CountEntry[]> {
+  const groupCategories = new Map<string, Map<NoteCategory, number>>();
+  const groupCoffeeCount = new Map<string, number>();
+
+  for (const bean of beans) {
+    const groupKey =
+      axis === "roaster"
+        ? bean.roaster.trim() || "Unknown"
+        : normaliseField((bean as Record<string, string | undefined>)[axis]);
+
+    groupCoffeeCount.set(groupKey, (groupCoffeeCount.get(groupKey) ?? 0) + 1);
+
+    if (!groupCategories.has(groupKey)) {
+      groupCategories.set(groupKey, new Map());
+    }
+    const categoryMap = groupCategories.get(groupKey)!;
+    const weight = bean.greatOn?.length ?? 1;
+
+    for (const category of getBeanCategories(bean.notes)) {
+      categoryMap.set(category, (categoryMap.get(category) ?? 0) + weight);
+    }
+  }
+
+  const result = new Map<string, CountEntry[]>();
+  const sortedEntries = [...groupCategories.entries()].sort(
+    (a, b) => (groupCoffeeCount.get(b[0]) ?? 0) - (groupCoffeeCount.get(a[0]) ?? 0)
+  );
+
+  for (const [groupKey, categoryMap] of sortedEntries) {
+    const sorted = NOTE_CATEGORIES.map((label) => ({
+      label,
+      count: categoryMap.get(label) ?? 0,
+    }))
+      .filter((entry) => entry.count > 0)
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    result.set(groupKey, sorted);
+  }
+
+  return result;
+}
+
+export function buildCategoryCorrelationMatrix(
+  beans: BeanRecord[]
+): { rows: string[]; cols: string[]; cells: MatrixCell[]; max: number } {
+  const rowSet = new Set<string>();
+  const colSet = new Set<string>();
+  const counts = new Map<string, number>();
+
+  for (const bean of beans) {
+    const categories = getBeanCategories(bean.notes);
+    for (const category of categories) {
+      rowSet.add(category);
+    }
+
+    for (const col of bean.greatOn) {
+      const colKey = normalizeKey(col);
+      if (!colKey) continue;
+      colSet.add(col.trim());
+
+      for (const category of categories) {
+        const key = `${normalizeKey(category)}::${colKey}`;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+  }
+
+  const rows = NOTE_CATEGORIES.filter((category) => rowSet.has(category));
+  const cols = [...colSet].sort((a, b) => a.localeCompare(b));
+  const cells: MatrixCell[] = [];
+  let max = 0;
+
+  for (const row of rows) {
+    for (const col of cols) {
+      const key = `${normalizeKey(row)}::${normalizeKey(col)}`;
+      const count = counts.get(key) ?? 0;
+      if (count > 0) {
+        cells.push({ row, col, count });
+        max = Math.max(max, count);
+      }
+    }
+  }
+
+  return { rows, cols, cells, max: max || 1 };
+}
+
+export function beanHasCategory(bean: BeanRecord, category: NoteCategory): boolean {
+  return getBeanCategories(bean.notes).has(category);
 }
 
 export function getOriginCounts(beans: BeanRecord[]): CountEntry[] {

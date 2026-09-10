@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Contact</title>
+    <link rel="stylesheet" href="https://analoguegonedigital.co.uk/embed/form.css" />
+    <script src="https://analoguegonedigital.co.uk/embed/form-height.js" defer></script>
+    <style>
+      /* Kept local since these are functional, not cosmetic: they must hold even if
+         the external stylesheet above fails to load. */
+      .honeypot-field {
+        position: absolute;
+        left: -9999px;
+        top: -9999px;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="contact-embed">
+      <form
+        id="contact-embed-form"
+        name="contact-embed"
+        method="POST"
+        data-netlify="true"
+        netlify-honeypot="bot-field"
+      >
+        <input type="hidden" name="form-name" value="contact-embed" />
+
+        <p class="honeypot-field">
+          <label>Don't fill this out: <input name="bot-field" /></label>
+        </p>
+
+        <div class="field">
+          <label for="ce-name">Name</label>
+          <input id="ce-name" type="text" name="name" placeholder="Your name" required />
+        </div>
+
+        <div class="field">
+          <label for="ce-email">Email</label>
+          <input id="ce-email" type="email" name="email" placeholder="you@example.com" required />
+        </div>
+
+        <fieldset class="field" style="border: none; padding: 0; margin: 0 0 16px">
+          <legend class="field-label" style="padding: 0; margin-bottom: 6px">
+            What are you looking for? <span class="hint">(select all that apply)</span>
+          </legend>
+          <div class="checkbox-group">
+            <label class="checkbox-option">
+              <input type="checkbox" name="looking-for" value="Website development" />
+              Website development
+            </label>
+            <label class="checkbox-option">
+              <input type="checkbox" name="looking-for" value="Audio production" />
+              Audio production
+            </label>
+            <label class="checkbox-option">
+              <input type="checkbox" name="looking-for" value="Photography" />
+              Photography
+            </label>
+            <label class="checkbox-option">
+              <input type="checkbox" name="looking-for" value="Something else" />
+              Something else
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <label for="ce-budget">Rough budget <span class="hint">(optional)</span></label>
+          <select id="ce-budget" name="budget">
+            <option value="Unsure">Unsure</option>
+            <option value="£0-£50">£0-£50</option>
+            <option value="£50-£100">£50-£100</option>
+            <option value="£100-£200">£100-£200</option>
+            <option value="£200-£400">£200-£400</option>
+            <option value="£400+">£400+</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="ce-timeline">Timeline</label>
+          <select id="ce-timeline" name="timeline" required>
+            <option value="No rush">No rush</option>
+            <option value="In the next few weeks">In the next few weeks</option>
+            <option value="In the next few months">In the next few months</option>
+            <option value="I have a fixed deadline">I have a fixed deadline</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="ce-message">Tell me about your project</label>
+          <textarea
+            id="ce-message"
+            name="message"
+            placeholder="what do you want to make, who is it for, and anything else that could help kickstart our chat about it"
+            required
+          ></textarea>
+        </div>
+
+        <button type="submit">Send message</button>
+
+        <p id="ce-status" class="status" role="status" aria-live="polite"></p>
+      </form>
+
+      <div id="ce-thanks" class="thanks" hidden>
+        <h2>Thanks for reaching out!</h2>
+        <p>Your message has been sent. I'll get back to you soon.</p>
+      </div>
+    </div>
+
+    <script>
+      var form = document.getElementById("contact-embed-form");
+      var status = document.getElementById("ce-status");
+      var thanks = document.getElementById("ce-thanks");
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        var button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        status.textContent = "";
+
+        fetch("/embed/contact.html", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams(new FormData(form)).toString(),
+        })
+          .then(function (response) {
+            if (!response.ok) throw new Error("Submission failed");
+            form.hidden = true;
+            thanks.hidden = false;
+          })
+          .catch(function () {
+            status.textContent = "Something went wrong. Please try again.";
+            button.disabled = false;
+          });
+      });
+    </script>
+  </body>
+</html>

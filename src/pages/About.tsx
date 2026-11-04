@@ -36,8 +36,9 @@ export const About = () => {
           <p>
             In January 2024, I began my role as a curriculum developer at Sololearn. The bite-size format and global accessibility of the app is something I love. With my head fully in curriculum development, I was able to work with the foundational building blocks and create innovative ways of delivering the learning. During my time at Sololearn, I revamped coding courses, and created brand new courses to teach Data Literacy and AI skills.
           </p>
-          <h2>The next chapter...</h2>
-          <p>At the moment, I'm looking for what comes next. Whether it's in education, software development, staff training, or something else, I'm open to any opportunity where I can use my current skills and learn some new ones along the way.</p>
+          <h2>analoguegonedigital.co.uk</h2>
+          <p>In June 2026, I started freelance work under the name <a className="accent-link" href="https://analoguegonedigital.co.uk" target="_blank" rel="noopener noreferrer">analogue&nbsp;gone&nbsp;digital</a>. my business is mainly aimed at giving musicians, artists, writers, and other creatives a one-stop-shop for everything they need to showcase their work online, using a pay-what-you-can model to increase accessibility to bespoke web design and development.</p>
+          <p>I'm always looking for what's next. Whether it's in education, software development, staff training, or something else, I'm open to any opportunity where I can use my current skills and learn some new ones along the way.</p>
         </div>
         <div>
           <h2>Skills</h2>

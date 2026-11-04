@@ -79,44 +79,6 @@ const COLUMNS: { key: ColumnKey; label: string; sortable: boolean }[] = [
   { key: "greatOn", label: "Great As", sortable: false },
 ];
 
-const BEAN_DATA_PLAN = [
-  {
-    id: 1,
-    title: "Create a database of my coffee bean purchases",
-    description:
-      "I'll start by creating a database to store all the roasts purchased and their details.",
-    status: "done",
-  },
-  {
-    id: 2,
-    title: "Create an interface to add new purchases and add review notes",
-    description:
-      "Next, I want to dynamically add new roasts to the database and add review notes.",
-    status: "done",
-  },
-  {
-    id: 3,
-    title: "Create a dashboard to visualise the data",
-    description:
-      "After that, I'll be creating an overview dashboard to visualise the data. This will include filtering and dynamically updating visuals.",
-    status: "done",
-  },
-  {
-    id: 4,
-    title: "Add interactive visualisations",
-    description:
-      "Once everything else is working, I want to add some more creative and interactive ways of visualising the data.",
-    status: "not started",
-  },
-  {
-    id: 5,
-    title: "Add a way to export the data",
-    description:
-      "At the end of the project, I want to add a way to export the data in a variety of formats so that others can access and use the data themselves.",
-    status: "not started",
-  },
-];
-
 const EMPTY_FORM: FormState = {
   roaster: "",
   name: "",
@@ -692,7 +654,7 @@ export const BeanData = () => {
             purchases. I'm using this project to experiment with data
             visualisation.
           </p>
-          <p>Please note: The data has been provided by myself and a friend, so this reflects our preferences alone. This is not trying to be an "objective measure" of coffee characteristics by any means.</p>
+          <p className="aside-text">Please note: The data has been provided by myself and a friend, so this reflects our preferences alone. This is not trying to be an "objective measure" of coffee characteristics by any means.</p>
         </div>
       </header>
 

@@ -329,6 +329,28 @@ const degreeToNote = (degree: number, mode: ModeName, octave: number, rootSemito
   return Tone.Frequency(midi, "midi").toNote();
 };
 
+// Tiny silent WAV — unlocks Web Audio on iOS when the hardware mute switch is on
+const SILENT_WAV_DATA_URI =
+  "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==";
+
+let silentUnlockAudio: HTMLAudioElement | null = null;
+
+const unlockHtmlAudio = async () => {
+  if (!silentUnlockAudio) {
+    silentUnlockAudio = new Audio(SILENT_WAV_DATA_URI);
+    silentUnlockAudio.setAttribute("playsinline", "true");
+    silentUnlockAudio.muted = false;
+    silentUnlockAudio.volume = 0.01;
+  }
+  try {
+    silentUnlockAudio.currentTime = 0;
+    await silentUnlockAudio.play();
+    silentUnlockAudio.pause();
+  } catch {
+    // Gesture may still unlock Tone.start(); ignore HTMLAudio failures
+  }
+};
+
 export const WeatherMusic = () => {
   const [selectedLocation, setSelectedLocation] = useState<LocationOption>(DEFAULT_LOCATION);
   const [locationSearch, setLocationSearch] = useState(formatLocationLabel(DEFAULT_LOCATION));
@@ -383,10 +405,25 @@ export const WeatherMusic = () => {
   const drumSequenceRef = useRef<Tone.Sequence<number> | null>(null);
   // Drum bus volume
   const drumGainRef = useRef<Tone.Gain | null>(null);
+  const drumReverbRef = useRef<Tone.Reverb | null>(null);
+  const drumCompressorRef = useRef<Tone.Compressor | null>(null);
+  const drumEQRef = useRef<Tone.EQ3 | null>(null);
 
   // Bass refs
   const bassSynthRef = useRef<Tone.MonoSynth | null>(null);
   const bassSequenceRef = useRef<Tone.Sequence<number> | null>(null);
+
+  // Audio bootstrap — graph is created only after a user gesture (required on iOS)
+  const audioReadyRef = useRef(false);
+  const [audioReady, setAudioReady] = useState(false);
+  const isPlayingRef = useRef(false);
+  const melodyVolumeRef = useRef(melodyVolume);
+  const drumVolumeRef = useRef(drumVolume);
+  const bassVolumeRef = useRef(bassVolume);
+  melodyVolumeRef.current = melodyVolume;
+  drumVolumeRef.current = drumVolume;
+  bassVolumeRef.current = bassVolume;
+  isPlayingRef.current = isPlaying;
 
   const filteredLocations = useMemo(() => {
     if (showAllLocations) return LOCATION_OPTIONS;
@@ -412,8 +449,51 @@ export const WeatherMusic = () => {
     [forecast, selectedMode, selectedRoot]
   );
 
-  // 80's melody synth setup
-  useEffect(() => {
+  const disposeAudioGraph = useCallback(() => {
+    sequenceRef.current?.stop();
+    sequenceRef.current?.dispose();
+    sequenceRef.current = null;
+    polySynthRef.current?.dispose();
+    polySynthRef.current = null;
+    polyChorusRef.current?.dispose();
+    polyChorusRef.current = null;
+    polyReverbRef.current?.dispose();
+    polyReverbRef.current = null;
+    polyFilterRef.current?.dispose();
+    polyFilterRef.current = null;
+    polyDistortionRef.current?.dispose();
+    polyDistortionRef.current = null;
+
+    drumSequenceRef.current?.stop();
+    drumSequenceRef.current?.dispose();
+    drumSequenceRef.current = null;
+    if (drumSynthsRef.current) {
+      Object.values(drumSynthsRef.current).forEach((synth) => synth.dispose());
+      drumSynthsRef.current = null;
+    }
+    snareToneRef.current?.dispose();
+    snareToneRef.current = null;
+    drumReverbRef.current?.dispose();
+    drumReverbRef.current = null;
+    drumCompressorRef.current?.dispose();
+    drumCompressorRef.current = null;
+    drumEQRef.current?.dispose();
+    drumEQRef.current = null;
+    drumGainRef.current?.dispose();
+    drumGainRef.current = null;
+
+    bassSequenceRef.current?.stop();
+    bassSequenceRef.current?.dispose();
+    bassSequenceRef.current = null;
+    bassSynthRef.current?.dispose();
+    bassSynthRef.current = null;
+
+    void Tone.Transport.stop();
+    Tone.Transport.cancel(0);
+    audioReadyRef.current = false;
+  }, []);
+
+  const initAudioGraph = useCallback(async () => {
     // Classic 80's sparkly poly synth
     polySynthRef.current = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: "sawtooth" },
@@ -421,12 +501,11 @@ export const WeatherMusic = () => {
         attack: 0.06,
         decay: 0.4,
         sustain: 0.65,
-        release: 2.8, 
+        release: 2.8,
       },
-      volume: -16,
+      volume: melodyVolumeRef.current,
     });
 
-    // Stereo chorus for extra 80's vibes
     polyChorusRef.current = new Tone.Chorus({
       frequency: 2.8,
       delayTime: 3.5,
@@ -434,207 +513,169 @@ export const WeatherMusic = () => {
       wet: 0.6,
     }).start();
 
-    // Reverb
     polyReverbRef.current = new Tone.Reverb({ decay: 4.0, wet: 0.35 });
-
-    // distortion amount will be set per-step from weather description (0 = clean, 0.55 = heavy)
     polyDistortionRef.current = new Tone.Distortion({ distortion: 0, wet: 1.0 });
-
-    // high-pass filter: frequency is updated per-step from avg daily temp
     polyFilterRef.current = new Tone.Filter({ type: "lowpass", frequency: 4000, rolloff: -12 });
 
-    // signal chain: polySynth → chorus → distortion  → lowpass filter → reverb → destination
+    // signal chain: polySynth → chorus → distortion → lowpass filter → reverb → destination
     polySynthRef.current.connect(polyChorusRef.current);
     polyChorusRef.current.connect(polyDistortionRef.current);
     polyDistortionRef.current.connect(polyFilterRef.current);
     polyFilterRef.current.connect(polyReverbRef.current);
     polyReverbRef.current.toDestination();
-  
+
+    const kickSynth = new Tone.MembraneSynth({
+      pitchDecay: 0.04,
+      octaves: 8,
+      envelope: {
+        attack: 0.001,
+        decay: 0.28,
+        sustain: 0,
+        release: 0.18,
+      },
+      volume: 2,
+    });
+
+    const snareNoise = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: {
+        attack: 0.001,
+        decay: 0.12,
+        sustain: 0,
+        release: 0.08,
+      },
+      volume: -2,
+    });
+
+    const snareTone = new Tone.MembraneSynth({
+      pitchDecay: 0.008,
+      octaves: 3,
+      envelope: {
+        attack: 0.001,
+        decay: 0.08,
+        sustain: 0,
+        release: 0.04,
+      },
+      volume: -8,
+    });
+    snareToneRef.current = snareTone;
+
+    const hihatSynth = new Tone.MetalSynth({
+      envelope: {
+        attack: 0.001,
+        decay: 0.04,
+        release: 0.01,
+      },
+      harmonicity: 5.1,
+      modulationIndex: 32,
+      resonance: 6000,
+      octaves: 1.5,
+      volume: -16,
+    });
+
+    const clapSynth = new Tone.NoiseSynth({
+      noise: { type: "pink" },
+      envelope: {
+        attack: 0.001,
+        decay: 0.09,
+        sustain: 0,
+        release: 0.06,
+      },
+      volume: -4,
+    });
+
+    const drumReverb = new Tone.Reverb({
+      decay: 1.6,
+      wet: 0.25,
+    }).toDestination();
+    drumReverbRef.current = drumReverb;
+
+    const drumCompressor = new Tone.Compressor({
+      threshold: -24,
+      ratio: 6,
+      attack: 0.002,
+      release: 0.08,
+    });
+    drumCompressorRef.current = drumCompressor;
+
+    const drumEQ = new Tone.EQ3({
+      low: 3,
+      mid: -2,
+      high: 4,
+    });
+    drumEQRef.current = drumEQ;
+
+    const drumGain = new Tone.Gain(Tone.dbToGain(drumVolumeRef.current));
+    drumGainRef.current = drumGain;
+
+    kickSynth.connect(drumEQ);
+    snareNoise.connect(drumEQ);
+    snareTone.connect(drumEQ);
+    hihatSynth.connect(drumEQ);
+    clapSynth.connect(drumEQ);
+    drumEQ.connect(drumCompressor);
+    drumCompressor.connect(drumGain);
+    drumGain.connect(drumReverb);
+
+    drumSynthsRef.current = {
+      kick: kickSynth,
+      snare: snareNoise,
+      hihat: hihatSynth,
+      clap: clapSynth,
+    };
+
+    bassSynthRef.current = new Tone.MonoSynth({
+      oscillator: { type: "sawtooth" },
+      envelope: {
+        attack: 0.01,
+        decay: 0.1,
+        sustain: 0.6,
+        release: 0.3,
+      },
+      filterEnvelope: {
+        attack: 0.01,
+        decay: 0.1,
+        sustain: 0.5,
+        release: 0.3,
+        baseFrequency: 80,
+        octaves: 2.5,
+      },
+      volume: bassVolumeRef.current,
+    }).toDestination();
 
     Tone.Transport.bpm.value = bpm;
 
-    sequenceRef.current = new Tone.Sequence(
-      (time, stepIndex) => {
-        setActiveStep(stepIndex);
-        setAnimFrame(Math.floor(stepIndex / 4));
-      },
-      Array.from({ length: 16 }, (_, i) => i),
-      "16n"
-    );
+    await Promise.all([polyReverbRef.current.ready, drumReverb.ready]);
+  }, [bpm]);
 
-    return () => {
-      sequenceRef.current?.stop();
-      sequenceRef.current?.dispose();
-      sequenceRef.current = null;
-      polySynthRef.current?.dispose();
-      polySynthRef.current = null;
-      polyChorusRef.current?.dispose();
-      polyChorusRef.current = null;
-      polyReverbRef.current?.dispose();
-      polyReverbRef.current = null;
-      polyFilterRef.current?.dispose();
-      polyFilterRef.current = null;
-      polyDistortionRef.current?.dispose();
-      polyDistortionRef.current = null;
-      void Tone.Transport.stop();
-      Tone.Transport.cancel(0);
-    };
+  const ensureAudioReady = useCallback(async (): Promise<boolean> => {
+    await unlockHtmlAudio();
+    await Tone.start();
+    const ctx = Tone.getContext();
+    if (ctx.state !== "running") {
+      await ctx.resume();
+    }
+    if (Tone.getContext().state !== "running") {
+      return false;
+    }
 
-  }, []);
+    if (!audioReadyRef.current || !polySynthRef.current) {
+      try {
+        await initAudioGraph();
+        audioReadyRef.current = true;
+        setAudioReady(true);
+      } catch (error) {
+        console.error(error);
+        disposeAudioGraph();
+        return false;
+      }
+    }
 
-// Drum synth setup
-useEffect(() => {
-  const kickSynth = new Tone.MembraneSynth({
-    pitchDecay: 0.04,
-    octaves: 8,
-    envelope: {
-      attack: 0.001,
-      decay: 0.28,
-      sustain: 0,
-      release: 0.18,
-    },
-    volume: 2,
-  });
+    return true;
+  }, [disposeAudioGraph, initAudioGraph]);
 
-  const snareNoise = new Tone.NoiseSynth({
-    noise: { type: "white" },
-    envelope: {
-      attack: 0.001,
-      decay: 0.12,
-      sustain: 0,
-      release: 0.08,
-    },
-    volume: -2,
-  });
-
-  // Tonal crack layer for snare body — triggered alongside snareNoise
-  const snareTone = new Tone.MembraneSynth({
-    pitchDecay: 0.008,
-    octaves: 3,
-    envelope: {
-      attack: 0.001,
-      decay: 0.08,
-      sustain: 0,
-      release: 0.04,
-    },
-    volume: -8,
-  });
-  snareToneRef.current = snareTone;
-
-  const hihatSynth = new Tone.MetalSynth({
-    envelope: {
-      attack: 0.001,
-      decay: 0.04,
-      release: 0.01,
-    },
-    harmonicity: 5.1,
-    modulationIndex: 32,
-    resonance: 6000,
-    octaves: 1.5,
-    volume: -16,
-  });
-
-  const clapSynth = new Tone.NoiseSynth({
-    noise: { type: "pink" },
-    envelope: {
-      attack: 0.001,
-      decay: 0.09,
-      sustain: 0,
-      release: 0.06,
-    },
-    volume: -4,
-  });
-
-  const drumReverb = new Tone.Reverb({
-    decay: 1.6,   
-    wet: 0.25,   
-  }).toDestination();
-
-  // Tighter ratio, lower threshold for more professional glue
-  const drumCompressor = new Tone.Compressor({
-    threshold: -24,
-    ratio: 6,
-    attack: 0.002,
-    release: 0.08,
-  });
-
-  // Boosted lows for kick weight, scooped mids, brightened highs for snap/air
-  const drumEQ = new Tone.EQ3({
-    low: 3,
-    mid: -2,
-    high: 4,
-  });
-
-  // Shared gain node for master drum volume control (-6 dB default)
-  const drumGain = new Tone.Gain(Tone.dbToGain(-6));
-  drumGainRef.current = drumGain;
-
-  // Signal chain: individual synths → EQ → compressor → gain → reverb → destination
-  kickSynth.connect(drumEQ);
-  snareNoise.connect(drumEQ);
-  snareTone.connect(drumEQ);
-  hihatSynth.connect(drumEQ);
-  clapSynth.connect(drumEQ);
-  drumEQ.connect(drumCompressor);
-  drumCompressor.connect(drumGain);
-  drumGain.connect(drumReverb);
-
-  drumSynthsRef.current = {
-    kick: kickSynth,
-    snare: snareNoise,
-    hihat: hihatSynth,
-    clap: clapSynth,
-  };
-
-  return () => {
-    drumSequenceRef.current?.stop();
-    drumSequenceRef.current?.dispose();
-    drumSequenceRef.current = null;
-
-    kickSynth.dispose();
-    snareNoise.dispose();
-    snareTone.dispose();
-    snareToneRef.current = null;
-    hihatSynth.dispose();
-    clapSynth.dispose();
-    drumReverb.dispose();
-    drumCompressor.dispose();
-    drumEQ.dispose();
-    drumGain.dispose();
-    drumGainRef.current = null;
-  };
-
-}, []);
-
-// bass setup
-useEffect(() => {
-  bassSynthRef.current = new Tone.MonoSynth({
-    oscillator: { type: "sawtooth" },
-    envelope: {
-      attack: 0.01,
-      decay: 0.1,
-      sustain: 0.6,
-      release: 0.3,
-    },
-    filterEnvelope: {
-      attack: 0.01,
-      decay: 0.1,
-      sustain: 0.5,
-      release: 0.3,
-      baseFrequency: 80,
-      octaves: 2.5,
-    },
-    volume: -10,
-  }).toDestination();
-
-  return () => {
-    bassSequenceRef.current?.stop();
-    bassSequenceRef.current?.dispose();
-    bassSequenceRef.current = null;
-    bassSynthRef.current?.dispose();
-    bassSynthRef.current = null;
-  };
-}, []);
+  // Dispose Tone graph on unmount only — creation happens on first Start gesture
+  useEffect(() => () => disposeAudioGraph(), [disposeAudioGraph]);
 
   // Volume sync effects
   useEffect(() => {
@@ -655,10 +696,10 @@ useEffect(() => {
     }
   }, [bassVolume]);
 
-  // Melody sequence rebuild 
+  // Melody sequence rebuild (runs after audio graph is ready)
   useEffect(() => {
-    if (!sequenceRef.current) return;
-    sequenceRef.current.dispose();
+    if (!audioReady || !polySynthRef.current) return;
+    sequenceRef.current?.dispose();
 
     sequenceRef.current = new Tone.Sequence(
       (time, stepIndex) => {
@@ -688,11 +729,11 @@ useEffect(() => {
           if (polyDistortionRef.current) {
             polyDistortionRef.current.distortion = distortionAmount;
           }
-        
+
           const duration = tempMinToNoteLength(day.tempMin);
           // velocity driven by temperature range
           const velocity = tempRangeToVelocity(day.tempMin, day.tempMax);
-        
+
           poly.triggerAttackRelease(pitch, duration, time, velocity);
         }
       },
@@ -701,12 +742,12 @@ useEffect(() => {
     );
 
     if (isPlaying) sequenceRef.current.start(0);
-  }, [isPlaying, stepsOn, weatherDrivenPitches, forecast]);
+  }, [audioReady, isPlaying, stepsOn, weatherDrivenPitches, forecast]);
 
-  // Drum sequence rebuild 
+  // Drum sequence rebuild
   useEffect(() => {
     const synths = drumSynthsRef.current;
-    if (!synths) return;
+    if (!audioReady || !synths) return;
     drumSequenceRef.current?.dispose();
 
     drumSequenceRef.current = new Tone.Sequence(
@@ -718,7 +759,7 @@ useEffect(() => {
           if (track === "kick") {
             (synth as Tone.MembraneSynth).triggerAttackRelease("C1", "16n", time);
           } else if (track === "snare") {
-            // CHANGED: fire both noise layer and tonal crack layer together
+            // fire both noise layer and tonal crack layer together
             (synth as Tone.NoiseSynth).triggerAttackRelease("16n", time);
             snareToneRef.current?.triggerAttackRelease("C2", "16n", time);
           } else if (track === "clap") {
@@ -733,12 +774,12 @@ useEffect(() => {
     );
 
     if (isPlaying) drumSequenceRef.current.start(0);
-  }, [isPlaying, drumsEnabled, drumPattern]);
+  }, [audioReady, isPlaying, drumsEnabled, drumPattern]);
 
-  // Bass sequence rebuild 
+  // Bass sequence rebuild
   useEffect(() => {
     const synth = bassSynthRef.current;
-    if (!synth) return;
+    if (!audioReady || !synth) return;
     bassSequenceRef.current?.dispose();
 
     // Flatten 16 groups × 4 steps into 64-step array
@@ -762,7 +803,7 @@ useEffect(() => {
     );
 
     if (isPlaying) bassSequenceRef.current.start(0);
-  }, [isPlaying, bassEnabled, bassGroups, selectedMode]);
+  }, [audioReady, isPlaying, bassEnabled, bassGroups, selectedMode, selectedRoot]);
 
   // BPM sync
   useEffect(() => {
@@ -886,19 +927,45 @@ useEffect(() => {
     return () => window.removeEventListener("mousedown", onDocumentPointerDown);
   }, []);
 
+  // Start Transport once sequences exist after audio unlock + play
+  useEffect(() => {
+    if (!isPlaying || !audioReady || !sequenceRef.current) return;
+    if (Tone.Transport.state !== "started") {
+      void Tone.Transport.start();
+    }
+  }, [isPlaying, audioReady]);
+
+  // Resume AudioContext after iOS suspends it (tab backgrounded / screen locked)
+  useEffect(() => {
+    const onVisibilityChange = async () => {
+      if (document.visibilityState !== "visible" || !isPlayingRef.current) return;
+      const ctx = Tone.getContext();
+      if (ctx.state === "suspended") {
+        await unlockHtmlAudio();
+        await Tone.start();
+        await ctx.resume();
+      }
+      if (isPlayingRef.current && Tone.Transport.state !== "started") {
+        void Tone.Transport.start("+0");
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
   // Playback toggle
   const onTogglePlay = async () => {
-    if (!sequenceRef.current) return;
     if (!isPlaying) {
-      await Tone.start();
-      sequenceRef.current.start(0);
-      drumSequenceRef.current?.start(0);
-      bassSequenceRef.current?.start(0);
-      await Tone.Transport.start();
+      const ready = await ensureAudioReady();
+      if (!ready) {
+        setStatusMessage("Tap Start again to enable audio.");
+        return;
+      }
+      // Sequences are built/started by effects once audioReady + isPlaying are both true
       setIsPlaying(true);
       return;
     }
-    sequenceRef.current.stop();
+    sequenceRef.current?.stop();
     drumSequenceRef.current?.stop();
     bassSequenceRef.current?.stop();
     await Tone.Transport.stop();
@@ -924,7 +991,7 @@ useEffect(() => {
           <p className="subtitle">
             A 16-step sequencer where the sound and note for each step is set by one day of weather data. Use your location or choose a location, then see what the forecast sounds like!
           </p>
-          <p> Please note that the 16-day forecast OpenWeatherMap API doesn't currently work at the minute because I don't have a subscription... Please enjoy playing around with the 8-day forecast though!</p>
+          <p className="aside-text"> Please note that the 16-day forecast OpenWeatherMap API doesn't currently work at the minute because I don't have a subscription... Please enjoy playing around with the 8-day forecast though!</p>
         </div>
       </header>
 

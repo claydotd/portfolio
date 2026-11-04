@@ -16,12 +16,11 @@ export const Layout = ({ children }: LayoutProps) => {
       <header className="app-header">
         <div className="app-header-inner">
           <Link to="/" className="brand">
-            <span className="brand-mark" />
             <span className="brand-text">Clay Dowdell Leslie</span>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="nav-links desktop-nav">
+          <nav className="nav-links desktop-nav" aria-label="Primary">
             <NavLink
               to="/"
               end
@@ -38,7 +37,7 @@ export const Layout = ({ children }: LayoutProps) => {
                 isActive ? "nav-link active" : "nav-link"
               }
             >
-              About me
+              About
             </NavLink>
 
             <NavLink
@@ -66,7 +65,7 @@ export const Layout = ({ children }: LayoutProps) => {
             onClick={() => setMobileMenuOpen(true)}
             aria-label="Open navigation menu"
           >
-            ☰
+            <span className="mobile-menu-bars" aria-hidden="true" />
           </button>
         </div>
       </header>
@@ -86,7 +85,7 @@ export const Layout = ({ children }: LayoutProps) => {
         }`}
       >
         <div className="mobile-sidebar-header">
-          <span>Navigation</span>
+          <span className="mobile-sidebar-label">Menu</span>
 
           <button
             className="mobile-menu-close"
@@ -97,7 +96,7 @@ export const Layout = ({ children }: LayoutProps) => {
           </button>
         </div>
 
-        <nav className="mobile-nav-links">
+        <nav className="mobile-nav-links" aria-label="Mobile">
           <NavLink
             to="/"
             end
@@ -116,7 +115,7 @@ export const Layout = ({ children }: LayoutProps) => {
               isActive ? "mobile-nav-link active" : "mobile-nav-link"
             }
           >
-            About me
+            About
           </NavLink>
 
           <NavLink
@@ -144,10 +143,14 @@ export const Layout = ({ children }: LayoutProps) => {
       <main className="app-main">{children}</main>
 
       <footer className="app-footer">
+        <div className="footer-left">
         <p>
-          © {new Date().getFullYear()} Clayton Dowdell Leslie. All rights
-          reserved.
+          © {new Date().getFullYear()} Clayton Dowdell Leslie.
         </p>
+        </div>
+        <div className="footer-right">
+          <a className="accent-link" href="https://analoguegonedigital.co.uk" target="_blank" rel="noopener noreferrer">analogue gone digital</a>
+        </div>
       </footer>
     </div>
   );

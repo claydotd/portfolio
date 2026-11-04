@@ -24,12 +24,12 @@ function Hero() {
           <p className="pill">Welcome to my portfolio</p>
 
           <h1>
-            Hi, I&apos;m <span className="accent">Clay</span>.
+            Hi, I&apos;m <span className="accent">CLAY</span>.
           </h1>
 
           <p className="subtitle">
           I&apos;m an aspiring <span className="accent">front-end developer</span> and this portfolio is where I experiment
-          with React, TypeScript, and modern UI practices.
+          with React, TypeScript, and other moder web stuff.
         </p>
           <div className="hero-actions">
           <a href="#projects" className="btn primary">

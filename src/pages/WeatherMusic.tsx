@@ -25,6 +25,21 @@ type ForecastDay = {
   weatherIcon: string;
 };
 
+type MelodyStep = {
+  dateLabel: string;
+  weatherMain: string;
+  weatherDescription: string;
+  weatherIcon: string;
+  role: "min" | "max";
+  temp: number;
+  tempMin: number;
+  tempMax: number;
+  note: string;
+  icy: boolean;
+  duration: string;
+  lengthLabel: string;
+};
+
 type ModeName = "ionian" | "aeolian" | "dorian" | "mixolydian";
 
 type DrumTrack = "kick" | "snare" | "hihat" | "clap";
@@ -169,10 +184,10 @@ const weatherIconForCondition = (condition: string): string => {
 };
 
 const DRUM_TRACKS: { id: DrumTrack; label: string; emoji: string }[] = [
-  { id: "kick",  label: "Kick",   emoji: "🟣" },
-  { id: "snare", label: "Snare",  emoji: "🔵" },
-  { id: "hihat", label: "Hi-Hat", emoji: "🟡" },
-  { id: "clap",  label: "Clap",   emoji: "🟠" },
+  { id: "kick",  label: "Kick",   emoji: "🟡" },
+  { id: "snare", label: "Snare",  emoji: "🩷" },
+  { id: "hihat", label: "Hi-Hat", emoji: "🟠" },
+  { id: "clap",  label: "Clap",   emoji: "🟣" },
 ];
 
 const DEFAULT_DRUM_PATTERN: Record<DrumTrack, boolean[]> = {
@@ -194,25 +209,15 @@ const DEFAULT_BASS_GROUPS: BassGroup[] = Array.from({ length: 16 }, (_, i) => {
 
 const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
 
-// API mode toggle
-// "onecall" → One Call API 3.0 (8-day forecast, doubled to fill 16 steps).
-// "daily"   → Legacy 16-day forecast endpoint (requires a paid plan)
-const FORECAST_API_MODE: "onecall" | "daily" = "onecall";
-
-const OPENWEATHER_DAILY_ENDPOINT = "https://api.openweathermap.org/data/2.5/forecast/daily";
 const OPENWEATHER_ONECALL_ENDPOINT = "https://api.openweathermap.org/data/3.0/onecall";
-const FORECAST_STEP_COUNT = 16;
+// One Call returns 8 daily entries. Each day becomes two sequencer steps.
+const FORECAST_DAY_COUNT = 8;
 const FETCH_TIMEOUT_MS = 12000;
 
-type OpenWeatherDailyResponse = {
-  cod?: string;
-  message?: string | number;
-  list?: Array<{
-    dt: number;
-    temp: { min: number; max: number };
-    weather: Array<{ main: string; description: string }>;
-  }>;
-};
+const limitForecast = (days: ForecastDay[]): ForecastDay[] => days.slice(0, FORECAST_DAY_COUNT);
+
+const fallbackForecast = (locationId: string): ForecastDay[] =>
+  limitForecast(getFallbackForecast(locationId));
 
 type OpenWeatherOneCallResponse = {
   daily?: Array<{
@@ -222,36 +227,9 @@ type OpenWeatherOneCallResponse = {
   }>;
 };
 
-const parseForecastDays = (data: OpenWeatherDailyResponse): ForecastDay[] => {
-  const normalizedDays: ForecastDay[] =
-    data.list?.slice(0, FORECAST_STEP_COUNT).map((day) => ({
-      dateLabel: toDateLabel(day.dt),
-      weatherMain: day.weather[0]?.main ?? "Unknown",
-      weatherDescription: day.weather[0]?.description ?? "n/a",
-      tempMin: day.temp.min,
-      tempMax: day.temp.max,
-      weatherIcon: weatherIconForCondition(day.weather[0]?.main ?? ""),
-    })) ?? [];
-
-  if (normalizedDays.length === 0) throw new Error("No forecast data returned.");
-
-  return [
-    ...normalizedDays,
-    ...Array.from({ length: Math.max(0, FORECAST_STEP_COUNT - normalizedDays.length) }, (_, index) => ({
-      dateLabel: `Day ${normalizedDays.length + index + 1}`,
-      weatherMain: normalizedDays[normalizedDays.length - 1]?.weatherMain ?? "Unknown",
-      weatherDescription: normalizedDays[normalizedDays.length - 1]?.weatherDescription ?? "n/a",
-      tempMin: normalizedDays[normalizedDays.length - 1]?.tempMin ?? 0,
-      tempMax: normalizedDays[normalizedDays.length - 1]?.tempMax ?? 0,
-      weatherIcon: normalizedDays[normalizedDays.length - 1]?.weatherIcon ?? "❔",
-    })),
-  ].slice(0, FORECAST_STEP_COUNT);
-};
-
-// Parses One Call 3.0 response: up to 8 daily entries, doubled to fill 16 steps.
 const parseOneCallForecastDays = (data: OpenWeatherOneCallResponse): ForecastDay[] => {
-  const raw: ForecastDay[] =
-    data.daily?.slice(0, 8).map((day) => ({
+  const days: ForecastDay[] =
+    data.daily?.slice(0, FORECAST_DAY_COUNT).map((day) => ({
       dateLabel: toDateLabel(day.dt),
       weatherMain: day.weather[0]?.main ?? "Unknown",
       weatherDescription: day.weather[0]?.description ?? "n/a",
@@ -260,24 +238,81 @@ const parseOneCallForecastDays = (data: OpenWeatherOneCallResponse): ForecastDay
       weatherIcon: weatherIconForCondition(day.weather[0]?.main ?? ""),
     })) ?? [];
 
-  if (raw.length === 0) throw new Error("No forecast data returned from One Call API.");
-
-  // Double the 8-day forecast to fill all 16 sequencer steps.
-  const doubled = [...raw, ...raw].slice(0, FORECAST_STEP_COUNT);
-  return doubled;
+  if (days.length === 0) throw new Error("No forecast data returned from One Call API.");
+  return days;
 };
 
-// Weather → synth parameters
-const mapWeatherToScaleDegree = (condition: string): number => {
+// 0°C is the root in octave 2. Each rounded degree Celsius is one scale step
+// up from that root. Negative temperatures use the same positive count, starting
+// an octave higher, and play on the ice synth.
+const ROOT_OCTAVE_MIDI = 36; // C2
+const ICE_OCTAVE_LIFT = 12;
+
+const tempToMelodyNote = (
+  temp: number,
+  mode: ModeName,
+  rootSemitones: number,
+): { note: string; icy: boolean } => {
+  const rounded = Math.round(temp);
+  const icy = rounded < 0;
+  const degrees = Math.abs(rounded);
+  const intervals = MODE_INTERVALS[mode];
+  const scaleLength = intervals.length;
+  const octaveShift = Math.floor(degrees / scaleLength);
+  const semitone = (intervals[degrees % scaleLength] ?? 0) + octaveShift * 12;
+  const register = ROOT_OCTAVE_MIDI + (icy ? ICE_OCTAVE_LIFT : 0);
+  const midi = Math.min(127, Math.max(0, register + rootSemitones + semitone));
+  return { note: Tone.Frequency(midi, "midi").toNote(), icy };
+};
+
+// Clear is the shortest gate. Heavier conditions hold longer.
+const weatherToNoteLength = (condition: string): { duration: string; label: string } => {
   const normalized = condition.toLowerCase();
-  if (normalized.includes("thunder")) return 6;
-  if (normalized.includes("rain") || normalized.includes("drizzle")) return 5;
-  if (normalized.includes("snow")) return 2;
-  if (normalized.includes("cloud")) return 4;
-  if (normalized.includes("mist") || normalized.includes("fog")) return 1;
-  if (normalized.includes("clear")) return 0;
-  return 3;
+  if (normalized.includes("thunder") || normalized.includes("squall") || normalized.includes("tornado")) {
+    return { duration: "2n", label: "1/2" };
+  }
+  if (normalized.includes("snow") || normalized.includes("rain")) {
+    return { duration: "4n", label: "1/4" };
+  }
+  if (
+    normalized.includes("drizzle") ||
+    normalized.includes("mist") ||
+    normalized.includes("fog") ||
+    normalized.includes("haze") ||
+    normalized.includes("smoke") ||
+    normalized.includes("dust") ||
+    normalized.includes("sand") ||
+    normalized.includes("ash")
+  ) {
+    return { duration: "8n", label: "1/8" };
+  }
+  if (normalized.includes("cloud")) return { duration: "16n", label: "1/16" };
+  if (normalized.includes("clear")) return { duration: "32n", label: "1/32" };
+  return { duration: "16n", label: "1/16" };
 };
+
+const buildMelodySteps = (days: ForecastDay[], mode: ModeName, rootSemitones: number): MelodyStep[] =>
+  days.flatMap((day) => {
+    const { duration, label } = weatherToNoteLength(day.weatherMain);
+    return (["min", "max"] as const).map((role) => {
+      const temp = role === "min" ? day.tempMin : day.tempMax;
+      const { note, icy } = tempToMelodyNote(temp, mode, rootSemitones);
+      return {
+        dateLabel: day.dateLabel,
+        weatherMain: day.weatherMain,
+        weatherDescription: day.weatherDescription,
+        weatherIcon: day.weatherIcon,
+        role,
+        temp,
+        tempMin: day.tempMin,
+        tempMax: day.tempMax,
+        note,
+        icy,
+        duration,
+        lengthLabel: label,
+      };
+    });
+  });
 // avgTemp: freq high when warm, low when cold
 const tempToFilterCutoff = (avgTemp: number): number => {
   const clamped = Math.max(-10, Math.min(40, avgTemp));
@@ -300,16 +335,6 @@ const descriptionToDistortion = (description: string): number => {
   // if (d.includes("light") || d.includes("overcast"))   return 0.02;
   // if (d.includes("clear") || d.includes("few"))        return 0.01;
   return 0.00;
-};
-
-const tempMinToNoteLength = (tempMin: number): string => {
-  const clamped = Math.max(-10, Math.min(20, tempMin));
-  const t = 1 - (clamped + 10) / 30; // cold → 1, warm → 0
-
-  if (t > 0.90) return "4n";
-  if (t > 0.50) return "8n";
-  if (t > 0.20) return "16n";
-  return "32n";
 };
 
 // velocity mapped to temperature range (high - low) for the day
@@ -335,7 +360,9 @@ const SILENT_WAV_DATA_URI =
 
 let silentUnlockAudio: HTMLAudioElement | null = null;
 
-const unlockHtmlAudio = async () => {
+// Must be invoked synchronously inside the tap/click handler. Awaiting this
+// before Tone.start() spends the iOS user-gesture and leaves the AudioContext suspended.
+const unlockHtmlAudio = () => {
   if (!silentUnlockAudio) {
     silentUnlockAudio = new Audio(SILENT_WAV_DATA_URI);
     silentUnlockAudio.setAttribute("playsinline", "true");
@@ -344,20 +371,24 @@ const unlockHtmlAudio = async () => {
   }
   try {
     silentUnlockAudio.currentTime = 0;
-    await silentUnlockAudio.play();
-    silentUnlockAudio.pause();
   } catch {
-    // Gesture may still unlock Tone.start(); ignore HTMLAudio failures
+    // ignore seek failures on a not-yet-loaded clip
   }
+  // Don't await play(): Safari often never settles this promise for a data-URI clip,
+  // which left the Start button stuck on "Starting…".
+  void silentUnlockAudio.play().then(() => silentUnlockAudio?.pause()).catch(() => {});
 };
 
 export const WeatherMusic = () => {
   const [selectedLocation, setSelectedLocation] = useState<LocationOption>(DEFAULT_LOCATION);
   const [locationSearch, setLocationSearch] = useState(formatLocationLabel(DEFAULT_LOCATION));
-  const [forecast, setForecast] = useState<ForecastDay[]>(getFallbackForecast(DEFAULT_LOCATION.id));
-  const [stepsOn, setStepsOn] = useState<boolean[]>(Array.from({ length: 16 }, (_, i) => i % 4 === 0));
+  const [forecast, setForecast] = useState<ForecastDay[]>(() => fallbackForecast(DEFAULT_LOCATION.id));
+  const [stepsOn, setStepsOn] = useState<boolean[]>(() =>
+    Array.from({ length: FORECAST_DAY_COUNT * 2 }, () => true),
+  );
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [bpm, setBpm] = useState(96);
   const [selectedMode, setSelectedMode] = useState<ModeName>("ionian");
   const [selectedRoot, setSelectedRoot] = useState(0); // semitone offset; 0 = C
@@ -386,6 +417,28 @@ export const WeatherMusic = () => {
   // activeBassStep tracks which of the 64 bass steps is currently active
   const [activeBassStep, setActiveBassStep] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (!drumGridOpen && !bassGridOpen) return;
+    const scrollY = window.scrollY;
+    const previous = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+    };
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    return () => {
+      document.body.style.overflow = previous.overflow;
+      document.body.style.position = previous.position;
+      document.body.style.top = previous.top;
+      document.body.style.width = previous.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [drumGridOpen, bassGridOpen]);
+
   // Refs
   // Polyphonic synth stuff
   const polySynthRef = useRef<Tone.PolySynth | null>(null);
@@ -395,6 +448,10 @@ export const WeatherMusic = () => {
   // distortion node for melody synth
   const polyDistortionRef = useRef<Tone.Distortion | null>(null);
   const sequenceRef = useRef<Tone.Sequence<number> | null>(null);
+  // Glassy FM bell for below-freezing steps
+  const iceSynthRef = useRef<Tone.PolySynth<Tone.FMSynth> | null>(null);
+  const iceChorusRef = useRef<Tone.Chorus | null>(null);
+  const iceReverbRef = useRef<Tone.Reverb | null>(null);
 
   const locationComboboxRef = useRef<HTMLDivElement | null>(null);
 
@@ -420,9 +477,23 @@ export const WeatherMusic = () => {
   const melodyVolumeRef = useRef(melodyVolume);
   const drumVolumeRef = useRef(drumVolume);
   const bassVolumeRef = useRef(bassVolume);
+  const drumsEnabledRef = useRef(drumsEnabled);
+  const drumPatternRef = useRef(drumPattern);
+  const bassEnabledRef = useRef(bassEnabled);
+  const bassGroupsRef = useRef(bassGroups);
+  const selectedModeRef = useRef(selectedMode);
+  const selectedRootRef = useRef(selectedRoot);
+  const stepsOnRef = useRef(stepsOn);
   melodyVolumeRef.current = melodyVolume;
   drumVolumeRef.current = drumVolume;
   bassVolumeRef.current = bassVolume;
+  drumsEnabledRef.current = drumsEnabled;
+  drumPatternRef.current = drumPattern;
+  bassEnabledRef.current = bassEnabled;
+  bassGroupsRef.current = bassGroups;
+  selectedModeRef.current = selectedMode;
+  selectedRootRef.current = selectedRoot;
+  stepsOnRef.current = stepsOn;
   isPlayingRef.current = isPlaying;
 
   const filteredLocations = useMemo(() => {
@@ -438,16 +509,17 @@ export const WeatherMusic = () => {
     setHighlightedLocationIndex((prev) => (prev < 0 || prev >= filteredLocations.length) ? 0 : prev);
   }, [filteredLocations, isLocationMenuOpen]);
 
-  const weatherDrivenPitches = useMemo(
-    () =>
-      forecast.map((day) => {
-        const mode = MODE_INTERVALS[selectedMode];
-        const degree = mapWeatherToScaleDegree(day.weatherMain);
-        const interval = mode[degree] ?? mode[0];
-        return Tone.Frequency(60 + selectedRoot + interval, "midi").toNote(); // C4 base + root offset
-      }).slice(0, 16),
-    [forecast, selectedMode, selectedRoot]
+  const melodySteps = useMemo(
+    () => buildMelodySteps(forecast, selectedMode, selectedRoot),
+    [forecast, selectedMode, selectedRoot],
   );
+
+  useEffect(() => {
+    const count = melodySteps.length;
+    setStepsOn((prev) =>
+      prev.length === count ? prev : Array.from({ length: count }, (_, i) => prev[i] ?? true),
+    );
+  }, [melodySteps.length]);
 
   const disposeAudioGraph = useCallback(() => {
     sequenceRef.current?.stop();
@@ -463,6 +535,12 @@ export const WeatherMusic = () => {
     polyFilterRef.current = null;
     polyDistortionRef.current?.dispose();
     polyDistortionRef.current = null;
+    iceSynthRef.current?.dispose();
+    iceSynthRef.current = null;
+    iceChorusRef.current?.dispose();
+    iceChorusRef.current = null;
+    iceReverbRef.current?.dispose();
+    iceReverbRef.current = null;
 
     drumSequenceRef.current?.stop();
     drumSequenceRef.current?.dispose();
@@ -523,6 +601,40 @@ export const WeatherMusic = () => {
     polyDistortionRef.current.connect(polyFilterRef.current);
     polyFilterRef.current.connect(polyReverbRef.current);
     polyReverbRef.current.toDestination();
+
+    // Inharmonic FM bell: fast strike, long glassy tail, kept out of the warm lowpass.
+    iceSynthRef.current = new Tone.PolySynth(Tone.FMSynth, {
+      harmonicity: 5.07,
+      modulationIndex: 2.6,
+      oscillator: { type: "sine" },
+      modulation: { type: "sine" },
+      envelope: {
+        attack: 0.004,
+        decay: 0.55,
+        sustain: 0.08,
+        release: 2.4,
+      },
+      modulationEnvelope: {
+        attack: 0.002,
+        decay: 0.4,
+        sustain: 0.02,
+        release: 1.6,
+      },
+      volume: melodyVolumeRef.current,
+    });
+
+    iceChorusRef.current = new Tone.Chorus({
+      frequency: 0.35,
+      delayTime: 2.8,
+      depth: 0.55,
+      wet: 0.4,
+    }).start();
+
+    iceReverbRef.current = new Tone.Reverb({ decay: 7.5, wet: 0.62 });
+
+    iceSynthRef.current.connect(iceChorusRef.current);
+    iceChorusRef.current.connect(iceReverbRef.current);
+    iceReverbRef.current.toDestination();
 
     const kickSynth = new Tone.MembraneSynth({
       pitchDecay: 0.04,
@@ -645,33 +757,64 @@ export const WeatherMusic = () => {
 
     Tone.Transport.bpm.value = bpm;
 
-    await Promise.all([polyReverbRef.current.ready, drumReverb.ready]);
+    // Reverb impulse rendering uses OfflineAudioContext. Safari frequently never
+    // resolves that render (especially with several reverbs at once), so playback
+    // must not wait on `.ready`. The dry path is audible immediately; wet fills in
+    // if the impulse finishes later.
+    void Promise.all([
+      polyReverbRef.current.ready,
+      iceReverbRef.current.ready,
+      drumReverb.ready,
+    ]).catch((error) => {
+      console.error(error);
+    });
   }, [bpm]);
 
-  const ensureAudioReady = useCallback(async (): Promise<boolean> => {
-    await unlockHtmlAudio();
-    await Tone.start();
-    const ctx = Tone.getContext();
-    if (ctx.state !== "running") {
-      await ctx.resume();
-    }
-    if (Tone.getContext().state !== "running") {
-      return false;
-    }
+  const ensureInFlightRef = useRef<Promise<boolean> | null>(null);
 
-    if (!audioReadyRef.current || !polySynthRef.current) {
-      try {
-        await initAudioGraph();
-        audioReadyRef.current = true;
-        setAudioReady(true);
-      } catch (error) {
-        console.error(error);
-        disposeAudioGraph();
+  const ensureAudioReady = useCallback((): Promise<boolean> => {
+    if (audioReadyRef.current && polySynthRef.current && iceSynthRef.current && Tone.getContext().state === "running") {
+      return Promise.resolve(true);
+    }
+    if (ensureInFlightRef.current) return ensureInFlightRef.current;
+
+    // Kick off unlock + resume in this synchronous turn, before any await.
+    // Safari's resume()/play() promises can stay pending forever even after the
+    // context is running, so poll state instead of awaiting those promises.
+    unlockHtmlAudio();
+    const ctx = Tone.getContext();
+    void Tone.start();
+    void ctx.resume();
+
+    const pending = (async () => {
+      const deadline = performance.now() + 1500;
+      while (Tone.getContext().state !== "running" && performance.now() < deadline) {
+        await new Promise((resolve) => window.setTimeout(resolve, 50));
+      }
+      if (Tone.getContext().state !== "running") {
         return false;
       }
-    }
 
-    return true;
+      if (!audioReadyRef.current || !polySynthRef.current || !iceSynthRef.current) {
+        try {
+          await initAudioGraph();
+          audioReadyRef.current = true;
+          setAudioReady(true);
+        } catch (error) {
+          console.error(error);
+          disposeAudioGraph();
+          return false;
+        }
+      }
+
+      return true;
+    })();
+
+    ensureInFlightRef.current = pending;
+    void pending.finally(() => {
+      if (ensureInFlightRef.current === pending) ensureInFlightRef.current = null;
+    });
+    return pending;
   }, [disposeAudioGraph, initAudioGraph]);
 
   // Dispose Tone graph on unmount only — creation happens on first Start gesture
@@ -681,6 +824,9 @@ export const WeatherMusic = () => {
   useEffect(() => {
     if (polySynthRef.current) {
       polySynthRef.current.set({ volume: melodyVolume });
+    }
+    if (iceSynthRef.current) {
+      iceSynthRef.current.set({ volume: melodyVolume });
     }
   }, [melodyVolume]);
 
@@ -696,55 +842,58 @@ export const WeatherMusic = () => {
     }
   }, [bassVolume]);
 
-  // Melody sequence rebuild (runs after audio graph is ready)
+  // Melody sequence stays on the transport for the whole playback. Step on/off
+  // is read from a ref so toggling a step doesn't rebuild the sequence off the grid.
   useEffect(() => {
-    if (!audioReady || !polySynthRef.current) return;
+    if (!audioReady || !polySynthRef.current || !iceSynthRef.current || melodySteps.length === 0) return;
     sequenceRef.current?.dispose();
 
     sequenceRef.current = new Tone.Sequence(
       (time, stepIndex) => {
         setActiveStep(stepIndex);
-        setAnimFrame(Math.floor(stepIndex / 4));
-        if (!stepsOn[stepIndex]) return;
+        setAnimFrame(Math.floor(stepIndex / 2) % images.length);
+        if (!stepsOnRef.current[stepIndex]) return;
 
-        const day = forecast[stepIndex];
-        const pitch = weatherDrivenPitches[stepIndex] ?? "C4";
-        const poly = polySynthRef.current;
+        const step = melodySteps[stepIndex];
+        if (!step) return;
 
-        if (poly && day) {
-          const release = 1.5 + tempToRelease(day.tempMax) * 1.2;
-          poly.set({ envelope: { release } });
+        const velocity = tempRangeToVelocity(step.tempMin, step.tempMax);
 
-          // filter cutoff driven by average daily temperature
-          // Cold days → dark/muffled tone; hot days → bright/open tone
-          const avgTemp = (day.tempMin + day.tempMax) / 2;
-          const cutoff = tempToFilterCutoff(avgTemp);
-          if (polyFilterRef.current) {
-            polyFilterRef.current.frequency.rampTo(cutoff, 0.05);
-          }
-
-          // distortion amount driven by weather description
-          // Clear/sunny → clean; thunderstorms → heavier
-          const distortionAmount = descriptionToDistortion(day.weatherDescription);
-          if (polyDistortionRef.current) {
-            polyDistortionRef.current.distortion = distortionAmount;
-          }
-
-          const duration = tempMinToNoteLength(day.tempMin);
-          // velocity driven by temperature range
-          const velocity = tempRangeToVelocity(day.tempMin, day.tempMax);
-
-          poly.triggerAttackRelease(pitch, duration, time, velocity);
+        if (step.icy) {
+          iceSynthRef.current?.triggerAttackRelease(step.note, step.duration, time, velocity);
+          return;
         }
+
+        const poly = polySynthRef.current;
+        if (!poly) return;
+
+        const release = 1.5 + tempToRelease(step.temp) * 1.2;
+        poly.set({ envelope: { release } });
+
+        const cutoff = tempToFilterCutoff(step.temp);
+        if (polyFilterRef.current) {
+          polyFilterRef.current.frequency.rampTo(cutoff, 0.05);
+        }
+
+        const distortionAmount = descriptionToDistortion(step.weatherDescription);
+        if (polyDistortionRef.current) {
+          polyDistortionRef.current.distortion = distortionAmount;
+        }
+
+        poly.triggerAttackRelease(step.note, step.duration, time, velocity);
       },
-      Array.from({ length: 16 }, (_, i) => i),
+      melodySteps.map((_, i) => i),
       "16n"
     );
 
-    if (isPlaying) sequenceRef.current.start(0);
-  }, [audioReady, isPlaying, stepsOn, weatherDrivenPitches, forecast]);
+    if (isPlaying) {
+      const startAt = Tone.Transport.state === "started" ? Tone.Transport.seconds : 0;
+      sequenceRef.current.start(startAt);
+    }
+  }, [audioReady, isPlaying, melodySteps]);
 
-  // Drum sequence rebuild
+  // Drum sequence stays on the transport for the whole playback. Mute and pattern
+  // edits are read from refs so they don't rebuild the sequence off the grid.
   useEffect(() => {
     const synths = drumSynthsRef.current;
     if (!audioReady || !synths) return;
@@ -752,9 +901,10 @@ export const WeatherMusic = () => {
 
     drumSequenceRef.current = new Tone.Sequence(
       (time, stepIndex) => {
-        if (!drumsEnabled) return;
-        (Object.keys(drumPattern) as DrumTrack[]).forEach((track) => {
-          if (!drumPattern[track][stepIndex]) return;
+        if (!drumsEnabledRef.current) return;
+        const pattern = drumPatternRef.current;
+        (Object.keys(pattern) as DrumTrack[]).forEach((track) => {
+          if (!pattern[track][stepIndex]) return;
           const synth = synths[track];
           if (track === "kick") {
             (synth as Tone.MembraneSynth).triggerAttackRelease("C1", "16n", time);
@@ -773,10 +923,14 @@ export const WeatherMusic = () => {
       "16n"
     );
 
-    if (isPlaying) drumSequenceRef.current.start(0);
-  }, [audioReady, isPlaying, drumsEnabled, drumPattern]);
+    if (isPlaying) {
+      const startAt = Tone.Transport.state === "started" ? Tone.Transport.seconds : 0;
+      drumSequenceRef.current.start(startAt);
+    }
+  }, [audioReady, isPlaying]);
 
-  // Bass sequence rebuild
+  // Bass sequence stays on the transport for the whole playback. Mute, pattern,
+  // and scale edits are read from refs so they don't rebuild the sequence off the grid.
   useEffect(() => {
     const synth = bassSynthRef.current;
     if (!audioReady || !synth) return;
@@ -788,22 +942,25 @@ export const WeatherMusic = () => {
     bassSequenceRef.current = new Tone.Sequence(
       (time, flatStep) => {
         setActiveBassStep(flatStep);
-        if (!bassEnabled) return;
+        if (!bassEnabledRef.current) return;
 
         const groupIndex = Math.floor(flatStep / 4);
         const stepInGroup = flatStep % 4;
-        const group = bassGroups[groupIndex];
+        const group = bassGroupsRef.current[groupIndex];
         if (!group || !group.stepsOn[stepInGroup]) return;
 
-        const note = degreeToNote(group.degree, selectedMode, 2, selectedRoot);
+        const note = degreeToNote(group.degree, selectedModeRef.current, 2, selectedRootRef.current);
         synth.triggerAttackRelease(note, "16n", time);
       },
       steps64,
       "16n"
     );
 
-    if (isPlaying) bassSequenceRef.current.start(0);
-  }, [audioReady, isPlaying, bassEnabled, bassGroups, selectedMode, selectedRoot]);
+    if (isPlaying) {
+      const startAt = Tone.Transport.state === "started" ? Tone.Transport.seconds : 0;
+      bassSequenceRef.current.start(startAt);
+    }
+  }, [audioReady, isPlaying]);
 
   // BPM sync
   useEffect(() => {
@@ -825,45 +982,24 @@ export const WeatherMusic = () => {
         throw new Error("OpenWeather API key is not configured");
       }
 
-      let days: ForecastDay[];
-
-      if (FORECAST_API_MODE === "onecall") {
-        // ── One Call API 3.0 ─────────────────────────────────────────────
-        const params = new URLSearchParams({
-          lat: String(selectedLocation.lat),
-          lon: String(selectedLocation.lon),
-          exclude: "current,minutely,hourly,alerts",
-          units: "metric",
-          appid: apiKey,
-        });
-        const response = await fetch(`${OPENWEATHER_ONECALL_ENDPOINT}?${params.toString()}`, { signal: controller.signal });
-        window.clearTimeout(timeoutId);
-        if (!response.ok) throw new Error(`Forecast request failed (${response.status})`);
-        const data = (await response.json()) as OpenWeatherOneCallResponse;
-        days = parseOneCallForecastDays(data);
-        setStatusMessage(`Loaded 8-day forecast (×2) for ${formatLocationLabel(selectedLocation)}.`);
-      } else {
-        // ── Legacy 16-day daily endpoint ─────────────────────────────────
-        const params = new URLSearchParams({
-          lat: String(selectedLocation.lat),
-          lon: String(selectedLocation.lon),
-          cnt: String(FORECAST_STEP_COUNT),
-          units: "metric",
-          appid: apiKey,
-        });
-        const response = await fetch(`${OPENWEATHER_DAILY_ENDPOINT}?${params.toString()}`, { signal: controller.signal });
-        window.clearTimeout(timeoutId);
-        if (!response.ok) throw new Error(`Forecast request failed (${response.status})`);
-        const data = (await response.json()) as OpenWeatherDailyResponse;
-        if (data.cod && data.cod !== "200") throw new Error(`OpenWeather error: ${String(data.message ?? data.cod)}`);
-        days = parseForecastDays(data);
-        setStatusMessage(`Loaded 16-day forecast for ${formatLocationLabel(selectedLocation)}.`);
-      }
-
+      const params = new URLSearchParams({
+        lat: String(selectedLocation.lat),
+        lon: String(selectedLocation.lon),
+        exclude: "current,minutely,hourly,alerts",
+        units: "metric",
+        appid: apiKey,
+      });
+      const response = await fetch(`${OPENWEATHER_ONECALL_ENDPOINT}?${params.toString()}`, { signal: controller.signal });
+      window.clearTimeout(timeoutId);
+      if (!response.ok) throw new Error(`Forecast request failed (${response.status})`);
+      const data = (await response.json()) as OpenWeatherOneCallResponse;
+      const days = parseOneCallForecastDays(data);
       setForecast(days);
+      setStatusMessage(`Loaded ${days.length}-day forecast for ${formatLocationLabel(selectedLocation)}.`);
     } catch (error) {
       console.error(error);
-      setForecast(getFallbackForecast(selectedLocation.id));const nearest = findNearestLocation(
+      setForecast(fallbackForecast(selectedLocation.id));
+      const nearest = findNearestLocation(
         selectedLocation.lat,
         selectedLocation.lon
       );
@@ -873,7 +1009,7 @@ export const WeatherMusic = () => {
       setLocationSearch(formatLocationLabel(nearest));
       
       // Use its fallback forecast
-      setForecast(getFallbackForecast(nearest.id));
+      setForecast(fallbackForecast(nearest.id));
       
       const isKnownLocation = LOCATION_OPTIONS.some(
         (loc) => loc.id === selectedLocation.id
@@ -887,9 +1023,9 @@ export const WeatherMusic = () => {
       
         setSelectedLocation(nearest);
         setLocationSearch(formatLocationLabel(nearest));
-        setForecast(getFallbackForecast(nearest.id));
+        setForecast(fallbackForecast(nearest.id));
       } else {
-        setForecast(getFallbackForecast(selectedLocation.id));
+        setForecast(fallbackForecast(selectedLocation.id));
       }
       if (error instanceof Error && error.name === "AbortError") {
         setStatusMessage("Weather request timed out. Showing example Scottish spring forecast.");
@@ -941,9 +1077,9 @@ export const WeatherMusic = () => {
       if (document.visibilityState !== "visible" || !isPlayingRef.current) return;
       const ctx = Tone.getContext();
       if (ctx.state === "suspended") {
-        await unlockHtmlAudio();
-        await Tone.start();
-        await ctx.resume();
+        unlockHtmlAudio();
+        void Tone.start();
+        void ctx.resume();
       }
       if (isPlayingRef.current && Tone.Transport.state !== "started") {
         void Tone.Transport.start("+0");
@@ -956,7 +1092,9 @@ export const WeatherMusic = () => {
   // Playback toggle
   const onTogglePlay = async () => {
     if (!isPlaying) {
+      setIsStarting(true);
       const ready = await ensureAudioReady();
+      setIsStarting(false);
       if (!ready) {
         setStatusMessage("Tap Start again to enable audio.");
         return;
@@ -986,12 +1124,13 @@ export const WeatherMusic = () => {
     <section className="page">
       <header className="hero">
         <div className="hero-left">
-          <p className="pill">Project · Weather-driven step sequencer</p>
+          <p className="pill">Project · Weather forecast step sequencer</p>
           <h1>Weather Music</h1>
           <p className="subtitle">
-            A 16-step sequencer where the sound and note for each step is set by one day of weather data. Use your location or choose a location, then see what the forecast sounds like!
+          A synth that takes the weather forcast and turns it into a melody! It takes the 8-day forecast from OpenWeather, and uses the 
+          min and max temperatures to map notes to a 16-step sequence. Fully programmable Drum and Bass step sequencers included. 
+          Have a play around with it and make some <em>weather music</em>! You can toggle on/off each step by clicking on it.
           </p>
-          <p className="aside-text"> Please note that the 16-day forecast OpenWeatherMap API doesn't currently work at the minute because I don't have a subscription... Please enjoy playing around with the 8-day forecast though!</p>
         </div>
       </header>
 
@@ -1135,8 +1274,13 @@ export const WeatherMusic = () => {
           </button>
 
           <div className="weather-sequencer-start-row">
-            <button type="button" className={`btn ${isPlaying ? "ghost" : "primary"}`} onClick={() => void onTogglePlay()}>
-              {isPlaying ? "Stop sequencer" : "Start sequencer"}
+            <button
+              type="button"
+              className={`btn ${isPlaying ? "ghost" : "primary"}`}
+              disabled={isStarting}
+              onClick={() => void onTogglePlay()}
+            >
+              {isStarting ? "Starting…" : isPlaying ? "Stop sequencer" : "Start sequencer"}
             </button>
           </div>
         </div>
@@ -1145,21 +1289,24 @@ export const WeatherMusic = () => {
 
         {/* Weather sequencer grid */}
         <div className="weather-sequencer-grid">
-          {forecast.slice(0, 16).map((day, index) => {
+          {melodySteps.map((step, index) => {
             const isStepOn = stepsOn[index];
             const isStepActive = activeStep === index;
+            const roleLabel = step.role === "min" ? "Min" : "Max";
             return (
               <button
-                key={`${day.dateLabel}-${index}`} type="button"
-                className={`weather-step ${isStepOn ? "on" : "off"} ${isStepActive ? "active" : ""}`}
+                key={`${step.dateLabel}-${step.role}-${index}`} type="button"
+                className={`weather-step ${isStepOn ? "on" : "off"} ${isStepActive ? "active" : ""} ${step.icy ? "ice" : ""}`}
                 onClick={() => setStepsOn((prev) => prev.map((v, i) => i === index ? !v : v))}
+                aria-label={`${step.dateLabel} ${roleLabel}, ${Math.round(step.temp)} degrees, ${step.note}`}
               >
-                <span className="weather-step-day">{day.dateLabel}</span>
-                <span className="weather-step-icon" aria-hidden="true">{day.weatherIcon}</span>
-                <span className="weather-step-main">{day.weatherMain}</span>
-                <span className="weather-step-temp">{Math.round(day.tempMax)} / {Math.round(day.tempMin)} C</span>
-                <span className="weather-step-detail">{day.weatherDescription}</span>
-                <span className="weather-step-pitch">{weatherDrivenPitches[index] ?? "C4"}</span>
+                <span className="weather-step-day">{step.dateLabel}</span>
+                <span className="weather-step-role">{roleLabel}{step.icy ? " · Ice" : ""}</span>
+                <span className="weather-step-icon" aria-hidden="true">{step.weatherIcon}</span>
+                <span className="weather-step-main">{step.weatherMain}</span>
+                <span className="weather-step-temp">{Math.round(step.temp)}°C</span>
+                <span className="weather-step-detail">{step.weatherDescription}</span>
+                <span className="weather-step-pitch">{step.note} · {step.lengthLabel}</span>
               </button>
             );
           })}
@@ -1168,7 +1315,7 @@ export const WeatherMusic = () => {
 
       {/* ── Drum grid overlay ───────────────────────────────────────────────── */}
       {drumGridOpen && (
-        <div className="drum-overlay" role="dialog" aria-label="Drum sequencer">
+        <div className="drum-overlay" role="dialog" aria-modal="true" aria-label="Drum sequencer">
           <div className="drum-overlay-inner">
             <div className="drum-overlay-header">
               <h2 className="drum-overlay-title">
@@ -1219,14 +1366,17 @@ export const WeatherMusic = () => {
               ))}
             </div>
 
-            <p className="drum-overlay-hint">Steps sync with the weather sequencer tempo · {bpm} BPM</p>
+            <p className="drum-overlay-hint">
+              Steps sync with the weather sequencer tempo · {bpm} BPM
+              <span className="drum-scroll-hint"> · Swipe sideways for all 16 steps</span>
+            </p>
           </div>
         </div>
       )}
 
       {/* ── Bass grid overlay ───────────────────────────────────────────────── */}
       {bassGridOpen && (
-        <div className="drum-overlay" role="dialog" aria-label="Bass sequencer">
+        <div className="drum-overlay" role="dialog" aria-modal="true" aria-label="Bass sequencer">
           <div className="drum-overlay-inner bass-overlay-inner">
             <div className="drum-overlay-header">
               <h2 className="drum-overlay-title">

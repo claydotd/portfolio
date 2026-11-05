@@ -1,6 +1,5 @@
-// Forecasts.tsx
-// Fallback 16-day forecast data for every location in WeatherMusic.
-// Used when the OpenWeatherMap API is unavailable or times out.
+// Fallback forecast data for every location in WeatherMusic.
+// The page uses the first 8 days, matching the live daily forecast.
 
 export type ForecastDay = {
     dateLabel: string;

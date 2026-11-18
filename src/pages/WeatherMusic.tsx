@@ -272,7 +272,7 @@ const weatherToNoteLength = (condition: string): { duration: string; label: stri
     return { duration: "2n", label: "1/2" };
   }
   if (normalized.includes("snow") || normalized.includes("rain")) {
-    return { duration: "4n", label: "1/4" };
+    return { duration: "8n", label: "1/8" };
   }
   if (
     normalized.includes("drizzle") ||
@@ -284,11 +284,11 @@ const weatherToNoteLength = (condition: string): { duration: string; label: stri
     normalized.includes("sand") ||
     normalized.includes("ash")
   ) {
-    return { duration: "8n", label: "1/8" };
+    return { duration: "16n", label: "1/16" };
   }
-  if (normalized.includes("cloud")) return { duration: "16n", label: "1/16" };
-  if (normalized.includes("clear")) return { duration: "32n", label: "1/32" };
-  return { duration: "16n", label: "1/16" };
+  if (normalized.includes("cloud")) return { duration: "32n", label: "1/32" };
+  if (normalized.includes("clear")) return { duration: "64n", label: "1/64" };
+  return { duration: "32n", label: "1/32" };
 };
 
 const buildMelodySteps = (days: ForecastDay[], mode: ModeName, rootSemitones: number): MelodyStep[] =>
@@ -398,6 +398,7 @@ export const WeatherMusic = () => {
   const [highlightedLocationIndex, setHighlightedLocationIndex] = useState(-1);
   const [reloadCount, setReloadCount] = useState(0);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [animFrame, setAnimFrame] = useState(0);
 
   // Volume default states dB
@@ -1039,20 +1040,25 @@ export const WeatherMusic = () => {
 
   useEffect(() => { void fetchForecast(); }, [fetchForecast, reloadCount]);
 
-  // Geolocation
-  useEffect(() => {
-    if (!navigator.geolocation) return;
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      setStatusMessage("Geolocation is not supported in this browser.");
+      return;
+    }
+    setIsLocating(true);
+    setStatusMessage("Getting your location...");
     navigator.geolocation.getCurrentPosition(
       ({ coords: { latitude, longitude } }) => {
         setSelectedLocation({ id: "user-location", name: "Your Location", countryName: "", lat: latitude, lon: longitude });
         setLocationSearch("Your Location");
+        setIsLocating(false);
       },
       () => {
-        setSelectedLocation(DEFAULT_LOCATION);
-        setLocationSearch(formatLocationLabel(DEFAULT_LOCATION));
-      }
+        setIsLocating(false);
+        setStatusMessage("Could not get your location. Check browser permissions, or pick a city above.");
+      },
     );
-  }, []);
+  };
 
   // Close location menu on outside click
   useEffect(() => {
@@ -1268,10 +1274,24 @@ export const WeatherMusic = () => {
             </div>
           </div>
 
-          <button type="button" className="btn ghost weather-reload-btn"
-            onClick={() => setReloadCount((v) => v + 1)} disabled={isFetchingWeather}>
-            {isFetchingWeather ? "Reloading..." : "Reload weather"}
-          </button>
+          <div className="weather-location-actions">
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={useMyLocation}
+              disabled={isLocating}
+            >
+              {isLocating ? "Locating..." : "Use my location"}
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => setReloadCount((v) => v + 1)}
+              disabled={isFetchingWeather}
+            >
+              {isFetchingWeather ? "Reloading..." : "Reload weather"}
+            </button>
+          </div>
 
           <div className="weather-sequencer-start-row">
             <button

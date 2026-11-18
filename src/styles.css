@@ -1348,10 +1348,17 @@ h3 {
   position: relative;
 }
 
-.weather-reload-btn {
+.weather-location-actions {
   grid-column: 1;
   grid-row: 2;
-  /* stretch to fill col width so it lines up with the location input */
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  /* stretch to fill col width so buttons line up with the location input */
+  width: 100%;
+}
+
+.weather-location-actions .btn {
   width: 100%;
 }
 
@@ -2813,7 +2820,7 @@ table.heatmap { display: none; }
   }
 
   .weather-location-picker,
-  .weather-reload-btn,
+  .weather-location-actions,
   .weather-bpm-control,
   .weather-volume-control,
   .weather-scale-controls,
